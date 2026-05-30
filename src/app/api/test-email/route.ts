@@ -55,12 +55,12 @@ export async function GET(request: NextRequest) {
           error: result,
         }, { status: 500 });
       }
-    } catch (error: any) {
+    } catch (error) {
       return NextResponse.json({
         success: false,
         message: 'Exception while sending test email',
         diagnostics,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       }, { status: 500 });
     }
   }
