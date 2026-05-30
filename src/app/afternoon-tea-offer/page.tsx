@@ -519,11 +519,11 @@ export default function AfternoonTeaOfferPage() {
                       </div>
                     </div>
 
-                    {/* Payment placeholder */}
+                    {/* Payment info */}
                     <div className="mt-6 p-6 border-2 border-dashed border-gray-300 rounded-xl text-center">
                       <Lock className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 font-medium">Secure payment via Stripe</p>
-                      <p className="text-xs text-gray-400 mt-1">Your card details are encrypted and secure</p>
+                      <p className="text-gray-600 font-medium">Secure payment via PayPal</p>
+                      <p className="text-xs text-gray-400 mt-1">You'll be redirected to PayPal to complete payment</p>
                     </div>
 
                     <div className="flex gap-4 mt-8">

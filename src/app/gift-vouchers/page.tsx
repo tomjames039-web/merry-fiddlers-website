@@ -385,7 +385,7 @@ export default function GiftVouchersPage() {
                     {/* Secure Payment Notice */}
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                       <Lock className="w-4 h-4" />
-                      <span>Secure payment powered by Stripe</span>
+                      <span>Secure payment powered by PayPal</span>
                     </div>
 
                     <div className="flex gap-4">

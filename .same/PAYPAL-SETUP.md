@@ -1,26 +1,10 @@
-# 💳 PayPal Setup - DONE! ✅
+# 💳 PayPal Setup - ACTION REQUIRED! ⚠️
 
-## You're All Set!
+## ⚠️ IMPORTANT: You Must Create Your PayPal.me Link First!
 
-Your website is now configured to accept PayPal payments using your email: **tomjames039@gmail.com**
+Your website is configured to use PayPal, but **you need to set up your PayPal.me link** for payments to work.
 
-## How It Works:
-
-1. Customer fills in the form (afternoon tea or gift voucher)
-2. Clicks "Proceed to Payment"
-3. Gets redirected to PayPal
-4. Pays using their PayPal account or credit/debit card
-5. Money goes directly to your PayPal account
-
-## No Setup Required! 🎉
-
-This uses **PayPal.me** - the simplest way to receive payments. No API keys, no webhooks, no technical setup needed!
-
-## Optional: Make PayPal.me Even Better (2 minutes)
-
-To ensure your PayPal.me link is active:
-
-## Step 1: Verify PayPal.me is Set Up (1 minute)
+## 🚨 REQUIRED STEP: Create Your PayPal.me Link (2 minutes)
 
 1. **Log in to PayPal**: https://www.paypal.com
 2. **Click your profile icon** (top right)
