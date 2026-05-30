@@ -69,7 +69,7 @@ export default function GiftVouchersPage() {
       // Create PayPal payment URL
       const paypalEmail = 'tomjames039@gmail.com';
       const itemName = `Gift Voucher £${finalAmount} for ${formData.recipientName}`;
-      const paypalUrl = `https://www.paypal.com/paypalme/tomjames039/${finalAmount.toFixed(2)}GBP`;
+      const paypalUrl = `https://www.paypal.com/paypalme/gourmetburgerco/${finalAmount.toFixed(2)}GBP`;
 
       // Redirect to PayPal
       window.location.href = paypalUrl;

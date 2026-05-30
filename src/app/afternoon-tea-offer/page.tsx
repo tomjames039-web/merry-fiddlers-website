@@ -104,7 +104,7 @@ export default function AfternoonTeaOfferPage() {
       // Create PayPal payment URL
       const paypalEmail = 'tomjames039@gmail.com';
       const itemName = `Afternoon Tea for ${quantity} ${quantity === 1 ? 'person' : 'people'}${addProsecco ? ' with Prosecco' : ''}`;
-      const paypalUrl = `https://www.paypal.com/paypalme/tomjames039/${totalPrice.toFixed(2)}GBP`;
+      const paypalUrl = `https://www.paypal.com/paypalme/gourmetburgerco/${totalPrice.toFixed(2)}GBP`;
 
       // Alternative: Use PayPal checkout link
       // const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalEmail)}&item_name=${encodeURIComponent(itemName)}&amount=${totalPrice.toFixed(2)}&currency_code=GBP&return=${encodeURIComponent(window.location.origin + '/booking-success?type=afternoon-tea')}&cancel_return=${encodeURIComponent(window.location.origin + '/afternoon-tea-offer')}`;
