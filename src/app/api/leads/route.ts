@@ -2,15 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendBrochureEmail } from '@/lib/email';
 
 interface LeadData {
-  fullName: string;
+  fullName?: string;
   email: string;
   phone?: string;
-  eventType: string;
+  eventType?: string;
   expectedGuests?: string;
   preferredDate?: string;
   message?: string;
-  agreedToMarketing: boolean;
-  source: string;
+  agreedToMarketing?: boolean;
+  source?: string;
+  // Afternoon tea purchase fields
+  type?: 'afternoon-tea-purchase' | 'gift-voucher-purchase' | 'brochure-download';
+  name?: string;
+  quantity?: string;
+  addProsecco?: boolean;
+  specialRequests?: string;
+  // Gift voucher fields
+  voucherAmount?: number;
+  recipientName?: string;
+  recipientEmail?: string;
+  giftMessage?: string;
+  purchaserName?: string;
+  purchaserEmail?: string;
 }
 
 // In-memory storage for development (replace with database in production)
