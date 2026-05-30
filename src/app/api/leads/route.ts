@@ -229,6 +229,35 @@ export async function POST(request: NextRequest) {
       }).catch(err => console.error('Brochure email error:', err));
     }
 
+    // Also send to afternoon tea purchases and gift voucher purchases
+    if (body.type === 'afternoon-tea-purchase') {
+      // Send notification for afternoon tea purchase
+      sendNotificationEmail({
+        fullName: body.name || body.fullName,
+        email: body.email,
+        phone: body.phone,
+        eventType: 'Afternoon Tea Purchase',
+        expectedGuests: body.quantity,
+        message: `Afternoon Tea for ${body.quantity} people. ${body.addProsecco ? 'With Prosecco upgrade. ' : ''}Special requests: ${body.specialRequests || 'None'}`,
+        agreedToMarketing: false,
+        source: 'afternoon-tea-purchase',
+      }).catch(err => console.error('Email notification error:', err));
+    }
+
+    if (body.type === 'gift-voucher-purchase') {
+      // Send notification for gift voucher purchase
+      sendNotificationEmail({
+        fullName: body.purchaserName || body.fullName,
+        email: body.purchaserEmail || body.email,
+        phone: '',
+        eventType: 'Gift Voucher Purchase',
+        expectedGuests: `£${body.voucherAmount}`,
+        message: `Gift voucher for £${body.voucherAmount} for ${body.recipientName}. ${body.recipientEmail ? `Recipient email: ${body.recipientEmail}. ` : ''}Message: ${body.giftMessage || 'None'}`,
+        agreedToMarketing: false,
+        source: 'gift-voucher-purchase',
+      }).catch(err => console.error('Email notification error:', err));
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Lead captured successfully',
