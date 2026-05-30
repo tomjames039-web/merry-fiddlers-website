@@ -49,6 +49,11 @@ async function sendNotificationEmail(lead: LeadData) {
       other: 'Other',
     };
 
+    const eventTypeLabel =
+      lead.eventType && eventTypeLabels[lead.eventType]
+        ? eventTypeLabels[lead.eventType]
+        : lead.eventType || 'Unknown Event Type';
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -58,7 +63,7 @@ async function sendNotificationEmail(lead: LeadData) {
       body: JSON.stringify({
         from: 'The Merry Fiddlers <onboarding@resend.dev>',
         to: ['info@themerryfiddlers.co.uk'], // Change to your actual email
-        subject: `New Event Enquiry: ${eventTypeLabels[lead.eventType] || lead.eventType} from ${lead.fullName}`,
+        subject: `New Event Enquiry: ${eventTypeLabel} from ${lead.fullName}`,
         html: `
           <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #2d4a4a; color: white; padding: 20px; text-align: center;">
@@ -71,7 +76,7 @@ async function sendNotificationEmail(lead: LeadData) {
               <p><strong>Phone:</strong> ${lead.phone || 'Not provided'}</p>
 
               <h2 style="color: #2d4a4a;">Event Details</h2>
-              <p><strong>Event Type:</strong> ${eventTypeLabels[lead.eventType] || lead.eventType}</p>
+              <p><strong>Event Type:</strong> ${eventTypeLabel}</p>
               <p><strong>Expected Guests:</strong> ${lead.expectedGuests || 'Not specified'}</p>
               <p><strong>Preferred Date:</strong> ${lead.preferredDate || 'Not specified'}</p>
 
@@ -136,12 +141,12 @@ async function sendAutoReply(lead: LeadData) {
         html: `
           <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #2d4a4a; color: white; padding: 30px; text-align: center;">
-              <h1 style="margin: 0; font-size: 28px;">Thank You, ${lead.fullName.split(' ')[0]}!</h1>
+              <h1 style="margin: 0; font-size: 28px;">Thank You, ${lead.fullName ? lead.fullName.split(' ')[0] : 'there'}!</h1>
               <p style="margin: 10px 0 0; opacity: 0.9;">We've received your event enquiry</p>
             </div>
             <div style="padding: 30px; background: #f8f6f1;">
               <p style="font-size: 16px; line-height: 1.6; color: #333;">
-                Thank you for considering The Merry Fiddlers for your ${lead.eventType.replace('-', ' ')}.
+                Thank you for considering The Merry Fiddlers for your ${lead.eventType ? lead.eventType.replace('-', ' ') : 'event'}.
                 We're thrilled that you're interested in hosting your special event with us.
               </p>
               <p style="font-size: 16px; line-height: 1.6; color: #333;">
@@ -242,9 +247,9 @@ export async function POST(request: NextRequest) {
     // If this is from brochure download, send the brochure email separately
     if (body.source === 'brochure-download') {
       sendBrochureEmail({
-        fullName: body.fullName,
+        fullName: body.fullName ?? '',
         email: body.email,
-        eventType: body.eventType,
+        eventType: body.eventType ?? '',
         expectedGuests: body.expectedGuests,
         preferredDate: body.preferredDate,
       }).catch(err => console.error('Brochure email error:', err));
