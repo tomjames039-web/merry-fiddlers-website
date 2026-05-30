@@ -190,8 +190,16 @@ export async function POST(request: NextRequest) {
   try {
     const body: LeadData = await request.json();
 
-    // Validate required fields
-    if (!body.fullName || !body.email || !body.eventType) {
+    // Validate required fields based on submission type
+    if (!body.email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
+    // For brochure downloads, require fullName and eventType
+    if (body.source === 'brochure-download' && (!body.fullName || !body.eventType)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
