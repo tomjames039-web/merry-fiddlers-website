@@ -11,6 +11,19 @@ interface LeadData {
   message?: string;
   agreedToMarketing: boolean;
   source: string;
+
+  // Optional fields carried by afternoon tea and gift voucher purchases
+  type?: 'afternoon-tea-purchase' | 'gift-voucher-purchase' | 'lead';
+  name?: string;
+  quantity?: string;
+  addProsecco?: boolean;
+  specialRequests?: string;
+  purchaserName?: string;
+  purchaserEmail?: string;
+  voucherAmount?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  giftMessage?: string;
 }
 
 // In-memory storage for development (replace with database in production)
