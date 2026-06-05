@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendBrochureEmail } from '@/lib/email';
-
+import { sendBrochureEmail, sendAfternoonTeaVoucherEmail, sendGiftVoucherEmail } from '@/lib/email';
 interface LeadData {
   fullName?: string;
   email: string;
@@ -25,20 +24,16 @@ interface LeadData {
   purchaserName?: string;
   purchaserEmail?: string;
 }
-
 // In-memory storage for development (replace with database in production)
 const leadsStore: Array<LeadData & { id: string; createdAt: string; status: string }> = [];
-
 // Email notification function using Resend
 async function sendNotificationEmail(lead: LeadData) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_ewzqA5Aq_9oqazM795FGAYwpArDL7oM9K';
-
   if (!RESEND_API_KEY) {
     console.log('⚠️ RESEND_API_KEY not set - skipping email notification');
     console.log('To enable emails, add RESEND_API_KEY to your environment variables');
     return false;
   }
-
   try {
     const eventTypeLabels: Record<string, string> = {
       wedding: 'Wedding Reception',
@@ -48,10 +43,8 @@ async function sendNotificationEmail(lead: LeadData) {
       anniversary: 'Anniversary',
       other: 'Other',
     };
-
     const eventTypeKey = lead.eventType ?? 'unknown';
     const eventTypeLabel = eventTypeLabels[eventTypeKey] || lead.eventType || 'Event Enquiry';
-
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -72,21 +65,17 @@ async function sendNotificationEmail(lead: LeadData) {
               <p><strong>Name:</strong> ${lead.fullName}</p>
               <p><strong>Email:</strong> <a href="mailto:${lead.email}">${lead.email}</a></p>
               <p><strong>Phone:</strong> ${lead.phone || 'Not provided'}</p>
-
               <h2 style="color: #2d4a4a;">Event Details</h2>
               <p><strong>Event Type:</strong> ${eventTypeLabel}</p>
               <p><strong>Expected Guests:</strong> ${lead.expectedGuests || 'Not specified'}</p>
               <p><strong>Preferred Date:</strong> ${lead.preferredDate || 'Not specified'}</p>
-
               ${lead.message ? `
                 <h2 style="color: #2d4a4a;">Message</h2>
                 <p style="background: white; padding: 15px; border-radius: 8px;">${lead.message}</p>
               ` : ''}
-
               <p style="margin-top: 20px;">
                 <strong>Marketing Consent:</strong> ${lead.agreedToMarketing ? 'Yes' : 'No'}
               </p>
-
               <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
                 <a href="mailto:${lead.email}?subject=Your Event Enquiry at The Merry Fiddlers"
                    style="display: inline-block; padding: 12px 24px; background: #c9a55c; color: white; text-decoration: none; border-radius: 6px;">
@@ -102,7 +91,6 @@ async function sendNotificationEmail(lead: LeadData) {
         `,
       }),
     });
-
     if (response.ok) {
       console.log('✅ Notification email sent successfully');
       return true;
@@ -116,15 +104,12 @@ async function sendNotificationEmail(lead: LeadData) {
     return false;
   }
 }
-
 // Send auto-reply to the lead
 async function sendAutoReply(lead: LeadData) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_ewzqA5Aq_9oqazM795FGAYwpArDL7oM9K';
-
   if (!RESEND_API_KEY) {
     return false;
   }
-
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -177,7 +162,6 @@ async function sendAutoReply(lead: LeadData) {
         `,
       }),
     });
-
     if (response.ok) {
       console.log('✅ Auto-reply sent to lead');
       return true;
@@ -188,11 +172,9 @@ async function sendAutoReply(lead: LeadData) {
     return false;
   }
 }
-
 export async function POST(request: NextRequest) {
   try {
     const body: LeadData = await request.json();
-
     // Validate required fields based on submission type
     if (!body.email) {
       return NextResponse.json(
@@ -200,7 +182,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     // For brochure downloads, require fullName and eventType
     if (body.source === 'brochure-download' && (!body.fullName || !body.eventType)) {
       return NextResponse.json(
@@ -208,7 +189,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
     // Create lead record
     const lead = {
       ...body,
@@ -216,10 +196,8 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       status: 'new',
     };
-
     // Store lead (in-memory for now - replace with database)
     leadsStore.push(lead);
-
     // Log the lead
     console.log('📧 New lead captured:');
     console.log('-------------------');
@@ -235,13 +213,11 @@ export async function POST(request: NextRequest) {
     console.log('Source:', body.source);
     console.log('Timestamp:', lead.createdAt);
     console.log('-------------------');
-
     // Send email notifications (non-blocking)
     Promise.all([
       sendNotificationEmail(body),
       sendAutoReply(body),
     ]).catch(err => console.error('Email notification error:', err));
-
     // If this is from brochure download, send the brochure email separately
     if (body.source === 'brochure-download') {
       sendBrochureEmail({
@@ -252,42 +228,62 @@ export async function POST(request: NextRequest) {
         preferredDate: body.preferredDate,
       }).catch(err => console.error('Brochure email error:', err));
     }
-
-    // Also send to afternoon tea purchases and gift voucher purchases
+    // Handle afternoon tea purchases
     if (body.type === 'afternoon-tea-purchase') {
-      // Send notification for afternoon tea purchase
+      const customerName = body.name || body.fullName || '';
+      const customerEmail = body.email || '';
+      // Send voucher email to customer
+      sendAfternoonTeaVoucherEmail({
+        customerName: customerName,
+        customerEmail: customerEmail,
+        quantity: String(body.quantity || '1'),
+        addProsecco: String(body.addProsecco || false),
+        specialRequests: body.specialRequests,
+      }).catch(err => console.error('❌ Error sending afternoon tea voucher:', err));
+      // Send notification to business
       sendNotificationEmail({
-        fullName: body.name || body.fullName,
-        email: body.email,
+        fullName: customerName,
+        email: customerEmail,
         phone: body.phone,
         eventType: 'Afternoon Tea Purchase',
-        expectedGuests: body.quantity,
+        expectedGuests: String(body.quantity || '1'),
         message: `Afternoon Tea for ${body.quantity} people. ${body.addProsecco ? 'With Prosecco upgrade. ' : ''}Special requests: ${body.specialRequests || 'None'}`,
         agreedToMarketing: false,
         source: 'afternoon-tea-purchase',
-      }).catch(err => console.error('Email notification error:', err));
+      }).catch(err => console.error('❌ Error sending business notification:', err));
     }
-
+    // Handle gift voucher purchases
     if (body.type === 'gift-voucher-purchase') {
-      // Send notification for gift voucher purchase
+      const recipientEmail = body.recipientEmail || body.purchaserEmail || '';
+      const recipientName = body.recipientName || '';
+      const purchaserName = body.purchaserName || body.fullName || '';
+      // Only send to recipient if they have an email
+      if (recipientEmail) {
+        sendGiftVoucherEmail({
+          recipientName: recipientName,
+          recipientEmail: recipientEmail,
+          purchaserName: purchaserName,
+          voucherAmount: body.voucherAmount || 0,
+          giftMessage: body.giftMessage,
+        }).catch(err => console.error('❌ Error sending gift voucher:', err));
+      }
+      // Send notification to business
       sendNotificationEmail({
-        fullName: body.purchaserName || body.fullName,
-        email: body.purchaserEmail || body.email,
+        fullName: purchaserName,
+        email: body.purchaserEmail || body.email || '',
         phone: '',
         eventType: 'Gift Voucher Purchase',
         expectedGuests: `£${body.voucherAmount}`,
-        message: `Gift voucher for £${body.voucherAmount} for ${body.recipientName}. ${body.recipientEmail ? `Recipient email: ${body.recipientEmail}. ` : ''}Message: ${body.giftMessage || 'None'}`,
+        message: `Gift voucher for £${body.voucherAmount} for ${recipientName}. ${recipientEmail ? `Recipient email: ${recipientEmail}. ` : ''}Message: ${body.giftMessage || 'None'}`,
         agreedToMarketing: false,
         source: 'gift-voucher-purchase',
-      }).catch(err => console.error('Email notification error:', err));
+      }).catch(err => console.error('❌ Error sending business notification:', err));
     }
-
     return NextResponse.json({
       success: true,
       message: 'Lead captured successfully',
       leadId: lead.id,
     });
-
   } catch (error) {
     console.error('Error capturing lead:', error);
     return NextResponse.json(
@@ -296,7 +292,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 // GET endpoint to retrieve leads (for admin dashboard)
 export async function GET(request: NextRequest) {
   // Simple auth check via header
@@ -304,7 +299,6 @@ export async function GET(request: NextRequest) {
   if (authHeader !== `Bearer ${process.env.ADMIN_API_KEY || 'merryfiddlers2025'}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
   return NextResponse.json({
     leads: leadsStore,
     total: leadsStore.length,
