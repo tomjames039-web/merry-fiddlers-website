@@ -95,7 +95,7 @@ const weekly: RegularEvent[] = [
   {
     title: 'Afternoon Tea',
     when: 'Wednesday – Saturday · 12:00 – 4:00 PM',
-    description: 'Finger sandwiches, fresh scones and cakes with tea or a glass of fizz.',
+    description: 'Finger sandwiches, fresh scones and cakes with tea or fizz. Bookings by email only.',
     icon: Coffee,
   },
   {

@@ -114,8 +114,9 @@ export default function AfternoonTeaOfferPage() {
               </h1>
 
               <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-                Purchase your voucher now and we'll contact you to arrange your booking.
-                Freshly baked scones, delicate sandwiches, and sweet treats await.
+                Purchase your voucher now, then book your visit by email. Afternoon
+                Tea is served 12pm–4pm, Wednesday to Saturday. Freshly baked scones,
+                delicate sandwiches, and sweet treats await.
               </p>
 
               {/* Timer */}
@@ -220,7 +221,7 @@ export default function AfternoonTeaOfferPage() {
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-blue-700 text-left">
-                      <strong>Please note:</strong> This is a voucher purchase. We'll contact you within 1-2 business days to arrange your afternoon tea booking at a convenient time.
+                      <strong>Please note:</strong> This is a voucher purchase. To book your visit, email us at <a href="mailto:info@themerryfiddlers.co.uk" className="underline">info@themerryfiddlers.co.uk</a> quoting your voucher code. Afternoon Tea is served 12pm–4pm, Wednesday to Saturday.
                     </p>
                   </div>
                 </div>
@@ -407,8 +408,8 @@ export default function AfternoonTeaOfferPage() {
                     <div className="mt-6 p-4 bg-blue-50 rounded-lg flex items-start gap-3">
                       <Calendar className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-blue-700">
-                        <p className="font-semibold mb-1">We'll arrange your booking</p>
-                        <p>After purchase, we'll contact you within 1-2 business days to schedule your afternoon tea at a time that works for you. Served Wednesday to Sunday, 2:00 PM - 5:00 PM.</p>
+                        <p className="font-semibold mb-1">How to book your visit</p>
+                        <p>After purchase, book your visit by email at <a href="mailto:info@themerryfiddlers.co.uk" className="underline">info@themerryfiddlers.co.uk</a>, quoting your voucher code. Afternoon Tea is served 12pm–4pm, Wednesday to Saturday.</p>
                       </div>
                     </div>
 

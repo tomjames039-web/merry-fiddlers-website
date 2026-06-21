@@ -241,19 +241,20 @@ function BookingSuccessContent() {
                   <Calendar className="w-5 h-5 text-[#c9a55c]" /> How to book your tea
                 </h3>
                 <p className="text-gray-600 mb-3">
-                  Reply to your voucher email or give us a call with your preferred
-                  date. We serve Afternoon Tea Wednesday to Saturday, 12:00–4:00 PM.
+                  All afternoon tea bookings are made by email. Email{' '}
+                  <a href="mailto:info@themerryfiddlers.co.uk" className="text-[#c9a55c] hover:underline">info@themerryfiddlers.co.uk</a>{' '}
+                  with your voucher code and preferred date. Afternoon Tea is served 12:00&ndash;4:00 PM, Wednesday to Saturday.
                 </p>
                 <div className="space-y-2 text-gray-600">
                   <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
-                    <span>4 Fiddlers Hamlet, Epping CM16 7PY</span>
+                    <Mail className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
+                    <a href="mailto:info@themerryfiddlers.co.uk" className="hover:text-[#2d4a4a]">
+                      info@themerryfiddlers.co.uk
+                    </a>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
-                    <a href="tel:+441992572142" className="hover:text-[#2d4a4a]">
-                      +44 1992 572142
-                    </a>
+                    <MapPin className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
+                    <span>4 Fiddlers Hamlet, Epping CM16 7PY</span>
                   </div>
                 </div>
               </div>

@@ -141,11 +141,11 @@ function getAfternoonTeaVoucherHTML(details: {
           </div>
 
           <div class="booking-info">
-            <h3 style="margin: 0 0 15px 0; color: #2d4a4a;">📅 How to Book Your Afternoon Tea</h3>
-            <p style="margin: 10px 0;"><strong>Someone will be in touch</strong> to arrange your booking, or to make a reservation please reply to this email with your preferred date and time.</p>
-            <p style="margin: 10px 0;"><strong>We offer Afternoon Tea:</strong><br>
+            <h3 style="margin: 0 0 15px 0; color: #2d4a4a;">How to Book Your Afternoon Tea</h3>
+            <p style="margin: 10px 0;"><strong>All Afternoon Tea bookings are made by email.</strong> To arrange your visit, please email <a href="mailto:info@themerryfiddlers.co.uk" style="color: #c9a55c;">info@themerryfiddlers.co.uk</a> quoting your voucher code and preferred date.</p>
+            <p style="margin: 10px 0;"><strong>Afternoon Tea is served:</strong><br>
             Wednesday to Saturday<br>
-            12:00 PM - 4:00 PM</p>
+            12:00 PM &ndash; 4:00 PM</p>
           </div>
 
           <div class="details-box">
