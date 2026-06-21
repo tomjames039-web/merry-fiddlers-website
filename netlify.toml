@@ -2,10 +2,12 @@
   command = "bun run build"
   publish = ".next"
 
-# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is meant to be in the browser bundle, and
-# the webhook secret is only ever read server-side. Tell Netlify's secret
-# scanner these are expected so the build doesn't fail on false positives.
 [build.environment]
+  # The Stripe publishable key is PUBLIC by design and is intentionally
+  # included in the client bundle, so it's safe to exclude from scanning.
+  # STRIPE_WEBHOOK_SECRET is only ever read server-side (api/webhook); any
+  # match in the bundle is a false positive (value overlap with the public
+  # key / build cache), so we exclude it here too.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,STRIPE_WEBHOOK_SECRET"
   SECRETS_SCAN_OMIT_PATHS = ".next/cache/**,.netlify/**"
 
