@@ -121,11 +121,11 @@ export async function POST(request: NextRequest) {
       request.headers.get('origin') ||
       request.nextUrl.origin;
 
-    // Cast params: this Stripe build's bundled types differ from the live API,
-    // which expects `ui_mode: 'embedded'` and returns a `client_secret`.
+    // This Stripe API version uses `embedded_page` for embedded checkout
+    // (the older `embedded` value is no longer accepted). Returns client_secret.
     type CreateParams = Parameters<typeof stripe.checkout.sessions.create>[0];
     const params = {
-      ui_mode: 'embedded',
+      ui_mode: 'embedded_page',
       mode: 'payment',
       line_items: lineItems,
       metadata,
