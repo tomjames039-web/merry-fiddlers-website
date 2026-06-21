@@ -1,62 +1,23 @@
-# The Merry Fiddlers - Website Todos
+## The Merry Fiddlers — Back Office & Payments Upgrade
 
-## Completed
-- [x] Added SpecialOfferBanner with "Claim Your 50% Off Afternoon Tea" and countdown timer
-- [x] Created reusable Header component
-- [x] Added "Every Season Has Its Charm - Visit All Year Round" section with seasonal Epping Forest images
-- [x] Created Afternoon Tea Offer purchase page (`/afternoon-tea-offer`)
-- [x] Updated seasonal images to show proper nature scenes (Spring flowers, Summer forest, Autumn leaves, Winter snow)
-- [x] Added mobile hamburger menu with smooth animations
-- [x] Integrated Stripe payment for afternoon tea bookings
-- [x] Created Gift Vouchers purchase page (`/gift-vouchers`) with 3-step form
-- [x] Added Stripe checkout API route (`/api/checkout`)
-- [x] Created Stripe webhook handler for email confirmations (`/api/webhook`)
-- [x] Created booking success page (`/booking-success`)
-- [x] Added Gift Vouchers to navigation
-- [x] Implemented lead capture form for brochure download (`/download-brochure`)
-- [x] Created leads API endpoint (`/api/leads`) for capturing event enquiries
-- [x] Form collects: name, email, phone, event type, expected guests, preferred date, message
-- [x] Marketing consent checkbox included
-- [x] Download reveals after successful form submission
-- [x] Connected brochure download to Google Drive hosted PDF
-- [x] Deployed website to Netlify (https://same-shz8zs3aqwq-latest.netlify.app)
-- [x] Created Admin Dashboard (`/admin`) for viewing and managing leads
-- [x] Added email notification system (sends when leads are captured)
-- [x] Added auto-reply emails to leads
-- [x] Added lead status tracking (new, contacted, converted, archived)
-- [x] Added CSV export for leads
-- [x] Added search and filter functionality in admin
+### Build progress
+1. [x] PERSISTENCE FOUNDATION — `src/lib/store.ts` (Netlify Blobs + fs fallback).
+2. [x] PAYMENTS — Stripe Embedded Checkout (on-site, fixed price). Vouchers recorded + emailed on PAID (idempotent fulfillment).
+3. [x] ADMIN REBUILD — server-verified login, Overview, Leads pipeline (New/Contacted/Booked/Lost), Vouchers (redeem-by-code, unredeemed/redeemed).
+4. [ ] CONTENT CMS (menus / what's-on uploads) — DEFERRED per user ("then we will create a backend so it can be uploaded from there").
+5. [x] WHAT'S ON page (curated events) — live in preview.
+6. [x] SOCIAL FEED — live Facebook page feed + Instagram card (slot for free IG widget).
 
-## Live Website
-**URL:** https://same-shz8zs3aqwq-latest.netlify.app
+### Verified
+- Production build passes (21 routes). tsc clean. No hardcoded secrets.
+- Leads + vouchers APIs round-trip via local store; admin login works.
+- Sample data seeded in .data/ (dev-only, gitignored) for preview demo.
 
-## Admin Dashboard
-**URL:** https://same-shz8zs3aqwq-latest.netlify.app/admin
-**Password:** merryfiddlers2025
+### Remaining / needs user
+- [ ] Stripe keys: user to add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY + STRIPE_SECRET_KEY (test first) for checkout to work. Guide provided.
+- [ ] Deploy decision: pushing/deploying switches live voucher payments to Stripe; until keys added, checkout shows graceful "call us" fallback. Local .git is empty this session — re-link before push.
+- [ ] Later: build CMS (#4) for uploading seasonal menus / what's-on PDFs+images, editable from admin.
 
-## To Enable Email Notifications
-1. Sign up for Resend (https://resend.com) - free tier available
-2. Add your domain and verify it
-3. In Netlify dashboard, go to Site Settings > Environment Variables
-4. Add: `RESEND_API_KEY=re_your_api_key`
-5. Redeploy the site
-
-## To Enable Live Stripe Payments
-1. Get Stripe API keys from https://dashboard.stripe.com/apikeys
-2. In Netlify, add environment variables:
-   - `STRIPE_SECRET_KEY=sk_live_...`
-   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...`
-   - `STRIPE_WEBHOOK_SECRET=whsec_...`
-3. Set up webhook endpoint in Stripe Dashboard pointing to `your-site.netlify.app/api/webhook`
-
-## Restaurant Bookings
-- All restaurant table bookings are handled via SevenRooms
-- Link: https://www.sevenrooms.com/reservations/themerryfiddlers
-- No additional booking system needed for regular dining
-
-## Future Enhancements (Optional)
-- [ ] Add persistent database storage (Supabase recommended)
-- [ ] Connect to CRM (HubSpot, Salesforce)
-- [ ] Add email marketing integration (Mailchimp, ConvertKit)
-- [ ] Implement voucher redemption tracking
-- [ ] Add more menu pages with actual menu items
+### Gotchas for future me
+- Don't run `bun run build` while `next dev` is running — corrupts .next. Kill dev, rm -rf .next, restart.
+- Start dev with: setsid nohup bun run dev > /tmp/dev.log 2>&1 < /dev/null & disown  (survives between bash calls).

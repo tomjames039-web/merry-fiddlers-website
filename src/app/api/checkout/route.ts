@@ -1,58 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { type NextRequest, NextResponse } from 'next/server';
+import { getStripe } from '@/lib/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+const AFTERNOON_TEA_PRICE = 1750; // £17.50 in pence (50% off £35)
+const PROSECCO_PRICE = 750; // £7.50 in pence
+
+// Structural type for line items so we don't depend on Stripe's bundled types.
+type CheckoutLineItem = {
+  price_data: {
+    currency: string;
+    product_data: { name: string; description?: string };
+    unit_amount: number;
+  };
+  quantity: number;
+};
 
 export async function POST(request: NextRequest) {
+  const stripe = getStripe();
+  if (!stripe) {
+    return NextResponse.json({ error: 'stripe_not_configured' }, { status: 503 });
+  }
+
   try {
     const body = await request.json();
     const {
-      type, // 'afternoon-tea' or 'gift-voucher'
+      type,
       quantity,
       addProsecco,
-      selectedDate,
-      selectedTime,
       customerName,
       customerEmail,
       customerPhone,
       specialRequests,
-      voucherAmount, // For gift vouchers
+      voucherAmount,
       recipientName,
       recipientEmail,
       giftMessage,
     } = body;
 
-    let lineItems: Array<{
-      price_data: {
-        currency: string;
-        product_data: {
-          name: string;
-          description?: string;
-          images?: string[];
-        };
-        unit_amount: number;
-      };
-      quantity: number;
-    }> = [];
+    let lineItems: CheckoutLineItem[] = [];
     let metadata: Record<string, string> = {};
 
     if (type === 'afternoon-tea') {
-      // Afternoon Tea offer - 50% off
-      const teaPrice = 1750; // £17.50 in pence (50% off £35)
-      const proseccoPrice = 750; // £7.50 in pence
-
+      const qty = Math.max(1, Number(quantity) || 1);
       lineItems = [
         {
           price_data: {
             currency: 'gbp',
             product_data: {
               name: '50% Off Afternoon Tea Voucher',
-              description: `Afternoon Tea voucher for ${quantity} ${quantity === 1 ? 'person' : 'people'} - We'll contact you to arrange booking`,
-              images: ['https://images.unsplash.com/photo-1558160074-4d7d8bdf4256?w=400'],
+              description: `Afternoon Tea voucher for ${qty} ${qty === 1 ? 'person' : 'people'}`,
             },
-            unit_amount: teaPrice,
+            unit_amount: AFTERNOON_TEA_PRICE,
           },
-          quantity: quantity,
+          quantity: qty,
         },
       ];
 
@@ -64,35 +63,35 @@ export async function POST(request: NextRequest) {
               name: 'Prosecco Upgrade',
               description: 'Glass of Prosecco per person',
             },
-            unit_amount: proseccoPrice,
+            unit_amount: PROSECCO_PRICE,
           },
-          quantity: quantity,
+          quantity: qty,
         });
       }
 
       metadata = {
         type: 'afternoon-tea',
-        quantity: String(quantity),
-        customerName,
-        customerEmail,
-        customerPhone,
+        quantity: String(qty),
+        customerName: customerName || '',
+        customerEmail: customerEmail || '',
+        customerPhone: customerPhone || '',
         specialRequests: specialRequests || '',
-        addProsecco: String(addProsecco),
+        addProsecco: String(!!addProsecco),
       };
     } else if (type === 'gift-voucher') {
-      // Gift voucher
-      const voucherAmountPence = Math.round(voucherAmount * 100);
-
+      const amount = Number(voucherAmount);
+      if (!amount || amount < 10) {
+        return NextResponse.json({ error: 'invalid_amount' }, { status: 400 });
+      }
       lineItems = [
         {
           price_data: {
             currency: 'gbp',
             product_data: {
               name: 'The Merry Fiddlers Gift Voucher',
-              description: `Gift voucher worth £${voucherAmount} for ${recipientName}`,
-              images: ['https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400'],
+              description: `Gift voucher worth £${amount} for ${recipientName || 'a lucky recipient'}`,
             },
-            unit_amount: voucherAmountPence,
+            unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
@@ -100,26 +99,37 @@ export async function POST(request: NextRequest) {
 
       metadata = {
         type: 'gift-voucher',
-        voucherAmount: String(voucherAmount),
-        recipientName,
+        voucherAmount: String(amount),
+        recipientName: recipientName || '',
         recipientEmail: recipientEmail || '',
         giftMessage: giftMessage || '',
-        purchaserName: customerName,
-        purchaserEmail: customerEmail,
+        purchaserName: customerName || '',
+        purchaserEmail: customerEmail || '',
       };
+    } else {
+      return NextResponse.json({ error: 'invalid_type' }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: lineItems,
-      mode: 'payment',
-      success_url: `${request.headers.get('origin')}/booking-success?session_id={CHECKOUT_SESSION_ID}&type=${type}`,
-      cancel_url: `${request.headers.get('origin')}/${type === 'afternoon-tea' ? 'afternoon-tea-offer' : 'gift-vouchers'}`,
-      customer_email: customerEmail,
-      metadata,
-    });
+    const origin =
+      request.headers.get('origin') ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      '';
 
-    return NextResponse.json({ sessionId: session.id, url: session.url });
+    // Cast params: this Stripe build's bundled types differ from the live API,
+    // which expects `ui_mode: 'embedded'` and returns a `client_secret`.
+    type CreateParams = Parameters<typeof stripe.checkout.sessions.create>[0];
+    const params = {
+      ui_mode: 'embedded',
+      mode: 'payment',
+      line_items: lineItems,
+      metadata,
+      customer_email: customerEmail || undefined,
+      return_url: `${origin}/booking-success?session_id={CHECKOUT_SESSION_ID}&type=${type}`,
+    } as unknown as CreateParams;
+
+    const session = await stripe.checkout.sessions.create(params);
+
+    return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
     console.error('Stripe checkout error:', error);
     return NextResponse.json(

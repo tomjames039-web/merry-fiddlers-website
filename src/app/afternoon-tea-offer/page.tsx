@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight, Check, Coffee, Cake, Gift, Calendar, CreditCard, Users, Sparkles, AlertCircle, Lock } from 'lucide-react';
 import Header from '@/components/Header';
+import StripeCheckout from '@/components/StripeCheckout';
 
 interface TimeLeft {
   days: number;
@@ -59,8 +60,7 @@ export default function AfternoonTeaOfferPage() {
     phone: '',
     specialRequests: '',
   });
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -74,119 +74,12 @@ export default function AfternoonTeaOfferPage() {
   const totalPrice = (DISCOUNTED_PRICE * quantity) + (addProsecco ? proseccoPrice * quantity : 0);
   const savings = (ORIGINAL_PRICE * quantity) - (DISCOUNTED_PRICE * quantity);
 
-  const handleSubmit = async () => {
-    setIsProcessing(true);
-
-    try {
-      // Store customer details for confirmation email
-      const bookingData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        quantity,
-        addProsecco,
-        specialRequests: formData.specialRequests,
-        totalPrice,
-      };
-
-      // Send booking details to backend
-      await fetch('/api/leads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'afternoon-tea-purchase',
-          ...bookingData,
-        }),
-      });
-
-      // Create PayPal payment URL
-      const paypalEmail = 'tomjames039@gmail.com';
-      const itemName = `Afternoon Tea for ${quantity} ${quantity === 1 ? 'person' : 'people'}${addProsecco ? ' with Prosecco' : ''}`;
-      const paypalUrl = `https://www.paypal.com/paypalme/gourmetburgerco/${totalPrice.toFixed(2)}GBP`;
-
-      // Alternative: Use PayPal checkout link
-      // const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalEmail)}&item_name=${encodeURIComponent(itemName)}&amount=${totalPrice.toFixed(2)}&currency_code=GBP&return=${encodeURIComponent(window.location.origin + '/booking-success?type=afternoon-tea')}&cancel_return=${encodeURIComponent(window.location.origin + '/afternoon-tea-offer')}`;
-
-      // Redirect to PayPal
-      window.location.href = paypalUrl;
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('Something went wrong. Please try again or contact us directly.');
-      setIsProcessing(false);
-    }
+  const handleSubmit = () => {
+    setShowCheckout(true);
   };
 
   const isStep1Valid = quantity >= 1;
   const isStep2Valid = formData.name && formData.email && formData.phone;
-
-  if (isComplete) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <main id="main-content" className="py-20 bg-[#f8f6f1]">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
-                <Check className="w-12 h-12 text-white" />
-              </div>
-              <h1 className="text-4xl md:text-5xl text-[#2d4a4a] mb-4" style={{ fontFamily: "'Cinzel', serif" }}>
-                Purchase Confirmed!
-              </h1>
-              <p className="text-xl text-gray-600 mb-6">
-                Your 50% Off Afternoon Tea voucher for <strong>{quantity} {quantity === 1 ? 'person' : 'people'}</strong> has been purchased!
-              </p>
-              <div className="bg-white rounded-xl p-6 shadow-lg mb-8 text-left">
-                <h3 className="font-semibold text-[#2d4a4a] mb-4 text-lg">Purchase Details</h3>
-                <div className="space-y-3 text-gray-600">
-                  <p><strong>Voucher for:</strong> {quantity} {quantity === 1 ? 'person' : 'people'}</p>
-                  <p><strong>Total Paid:</strong> £{totalPrice.toFixed(2)}</p>
-                  {addProsecco && <p><strong>Includes:</strong> Prosecco upgrade</p>}
-                  <p className="text-green-600 font-medium">You saved: £{savings.toFixed(2)}!</p>
-                </div>
-              </div>
-
-              <div className="bg-[#c9a55c]/10 border-2 border-[#c9a55c] rounded-xl p-6 mb-8">
-                <div className="flex items-start gap-3 mb-3">
-                  <Calendar className="w-6 h-6 text-[#c9a55c] flex-shrink-0 mt-1" />
-                  <div className="text-left">
-                    <h3 className="font-bold text-[#2d4a4a] text-lg mb-2">What happens next?</h3>
-                    <p className="text-gray-700 mb-3">
-                      We'll contact you within <strong>1-2 business days</strong> to arrange your afternoon tea booking at a time that suits you.
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      We serve Afternoon Tea Wednesday to Sunday between 2:00 PM - 5:00 PM.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-gray-500 mb-8">
-                A confirmation email has been sent to <strong>{formData.email}</strong>
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  href="/"
-                  className="px-8 py-4 bg-[#2d4a4a] hover:bg-[#1d3a3a] text-white rounded-lg transition-colors uppercase tracking-wider text-sm font-medium"
-                  style={{ fontFamily: "'Cinzel', serif" }}
-                >
-                  Back to Home
-                </Link>
-                <Link
-                  href="/getting-here"
-                  className="px-8 py-4 border-2 border-[#2d4a4a] text-[#2d4a4a] hover:bg-[#2d4a4a] hover:text-white rounded-lg transition-colors uppercase tracking-wider text-sm font-medium"
-                  style={{ fontFamily: "'Cinzel', serif" }}
-                >
-                  Plan Your Visit
-                </Link>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen">
@@ -522,8 +415,8 @@ export default function AfternoonTeaOfferPage() {
                     {/* Payment info */}
                     <div className="mt-6 p-6 border-2 border-dashed border-gray-300 rounded-xl text-center">
                       <Lock className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 font-medium">Secure payment via PayPal</p>
-                      <p className="text-xs text-gray-400 mt-1">You'll be redirected to PayPal to complete payment</p>
+                      <p className="text-gray-600 font-medium">Secure card payment</p>
+                      <p className="text-xs text-gray-400 mt-1">Pay by card right here — you won't leave this page</p>
                     </div>
 
                     <div className="flex gap-4 mt-8">
@@ -535,21 +428,12 @@ export default function AfternoonTeaOfferPage() {
                       </button>
                       <button
                         onClick={handleSubmit}
-                        disabled={!isStep2Valid || isProcessing}
+                        disabled={!isStep2Valid}
                         className="flex-1 py-4 bg-[#c9a55c] hover:bg-[#b8944b] disabled:bg-gray-300 text-white rounded-lg transition-colors uppercase tracking-wider font-medium flex items-center justify-center gap-2"
                         style={{ fontFamily: "'Cinzel', serif" }}
                       >
-                        {isProcessing ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-5 h-5" />
-                            Pay £{totalPrice.toFixed(2)}
-                          </>
-                        )}
+                        <CreditCard className="w-5 h-5" />
+                        Pay £{totalPrice.toFixed(2)}
                       </button>
                     </div>
 
@@ -563,6 +447,22 @@ export default function AfternoonTeaOfferPage() {
           </div>
         </section>
       </main>
+
+      {showCheckout && (
+        <StripeCheckout
+          title={`Afternoon Tea · £${totalPrice.toFixed(2)}`}
+          payload={{
+            type: 'afternoon-tea',
+            quantity,
+            addProsecco,
+            customerName: formData.name,
+            customerEmail: formData.email,
+            customerPhone: formData.phone,
+            specialRequests: formData.specialRequests,
+          }}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="teal-gradient text-white py-16">

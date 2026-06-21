@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight, Gift, CreditCard, User, MessageSquare, Check, Sparkles, Lock } from 'lucide-react';
 import Header from '@/components/Header';
+import StripeCheckout from '@/components/StripeCheckout';
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -38,6 +39,7 @@ export default function GiftVouchersPage() {
     purchaserEmail: '',
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [deliveryOption, setDeliveryOption] = useState<'email' | 'download'>('email');
 
   const finalAmount = selectedAmount || (customAmount ? parseFloat(customAmount) : 0);
@@ -45,39 +47,9 @@ export default function GiftVouchersPage() {
   const isStep2Valid = formData.recipientName.trim() !== '';
   const isStep3Valid = formData.purchaserName && formData.purchaserEmail;
 
-  const handleSubmit = async () => {
-    setIsProcessing(true);
-
-    try {
-      // Send voucher purchase details to backend
-      await fetch('/api/leads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'gift-voucher-purchase',
-          voucherAmount: finalAmount,
-          recipientName: formData.recipientName,
-          recipientEmail: deliveryOption === 'email' ? formData.recipientEmail : '',
-          giftMessage: formData.giftMessage,
-          purchaserName: formData.purchaserName,
-          purchaserEmail: formData.purchaserEmail,
-        }),
-      });
-
-      // Create PayPal payment URL
-      const paypalEmail = 'tomjames039@gmail.com';
-      const itemName = `Gift Voucher £${finalAmount} for ${formData.recipientName}`;
-      const paypalUrl = `https://www.paypal.com/paypalme/gourmetburgerco/${finalAmount.toFixed(2)}GBP`;
-
-      // Redirect to PayPal
-      window.location.href = paypalUrl;
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('Something went wrong. Please try again or contact us directly.');
-      setIsProcessing(false);
-    }
+  const handleSubmit = () => {
+    setIsProcessing(false);
+    setShowCheckout(true);
   };
 
   return (
@@ -385,7 +357,7 @@ export default function GiftVouchersPage() {
                     {/* Secure Payment Notice */}
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                       <Lock className="w-4 h-4" />
-                      <span>Secure payment powered by PayPal</span>
+                      <span>Secure card payment — you won't leave this page</span>
                     </div>
 
                     <div className="flex gap-4">
@@ -401,17 +373,8 @@ export default function GiftVouchersPage() {
                         className="flex-1 py-4 bg-[#c9a55c] hover:bg-[#b8944b] disabled:bg-gray-300 text-white rounded-lg transition-colors uppercase tracking-wider font-medium flex items-center justify-center gap-2"
                         style={{ fontFamily: "'Cinzel', serif" }}
                       >
-                        {isProcessing ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-5 h-5" />
-                            Pay £{finalAmount.toFixed(2)}
-                          </>
-                        )}
+                        <CreditCard className="w-5 h-5" />
+                        Pay £{finalAmount.toFixed(2)}
                       </button>
                     </div>
                   </div>
@@ -442,6 +405,22 @@ export default function GiftVouchersPage() {
           </div>
         </section>
       </main>
+
+      {showCheckout && (
+        <StripeCheckout
+          title={`Gift Voucher · £${finalAmount.toFixed(2)}`}
+          payload={{
+            type: 'gift-voucher',
+            voucherAmount: finalAmount,
+            recipientName: formData.recipientName,
+            recipientEmail: deliveryOption === 'email' ? formData.recipientEmail : '',
+            giftMessage: formData.giftMessage,
+            customerName: formData.purchaserName,
+            customerEmail: formData.purchaserEmail,
+          }}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="teal-gradient text-white py-16">
