@@ -2,5 +2,12 @@
   command = "bun run build"
   publish = ".next"
 
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is meant to be in the browser bundle, and
+# the webhook secret is only ever read server-side. Tell Netlify's secret
+# scanner these are expected so the build doesn't fail on false positives.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,STRIPE_WEBHOOK_SECRET"
+  SECRETS_SCAN_OMIT_PATHS = ".next/cache/**,.netlify/**"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
