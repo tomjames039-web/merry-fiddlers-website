@@ -110,10 +110,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'invalid_type' }, { status: 400 });
     }
 
+    // Derive an absolute origin reliably (Stripe requires an absolute
+    // return_url). Prefer an explicit site URL, then the forwarded host,
+    // then the Origin header, then the request URL's own origin.
+    const host = request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
     const origin =
-      request.headers.get('origin') ||
       process.env.NEXT_PUBLIC_SITE_URL ||
-      '';
+      (host ? `${proto}://${host}` : '') ||
+      request.headers.get('origin') ||
+      request.nextUrl.origin;
 
     // Cast params: this Stripe build's bundled types differ from the live API,
     // which expects `ui_mode: 'embedded'` and returns a `client_secret`.
@@ -132,8 +138,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
     console.error('Stripe checkout error:', error);
+    const detail = error instanceof Error ? error.message : 'unknown error';
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: 'Failed to create checkout session', detail },
       { status: 500 }
     );
   }
