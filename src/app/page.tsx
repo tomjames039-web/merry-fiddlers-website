@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, FileText, CalendarCheck, Star } from 'lucide-react';
 import SpecialOfferBanner from '@/components/SpecialOfferBanner';
+import SocialFeed from '@/components/SocialFeed';
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -351,6 +352,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Social Feed */}
+      <SocialFeed />
 
       {/* Footer */}
       <footer className="teal-gradient text-white py-16">
