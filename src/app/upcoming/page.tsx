@@ -103,11 +103,16 @@ export default function WhatsOnPage() {
   const feature =
     screen.find((i) => i.featured) || screen[0] || null;
   const sportCards = screen.filter((i) => !feature || i.id !== feature.id);
-  // Self-healing image: replace the old garden default with the sport image.
+  // Self-healing image: replace earlier placeholder defaults with the real
+  // garden big-screen photo, while respecting any custom image set in admin.
+  const STALE_FEATURE_IMAGES = new Set([
+    '/pub-front-4.jpeg',
+    '/football-pitch.jpg',
+  ]);
   const featureImg =
-    feature && feature.imageUrl && feature.imageUrl !== '/pub-front-4.jpeg'
+    feature && feature.imageUrl && !STALE_FEATURE_IMAGES.has(feature.imageUrl)
       ? feature.imageUrl
-      : '/football-pitch.jpg';
+      : '/big-screen-garden.jpg';
 
   return (
     <div className="min-h-screen bg-[#f8f6f1]">

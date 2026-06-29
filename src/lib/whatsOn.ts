@@ -105,7 +105,7 @@ export const DEFAULT_WHATS_ON: WhatsOnItem[] = [
     description:
       'Our enormous 4-metre screen takes pride of place in the beer garden — gather your friends, grab a cold one and watch the biggest sporting moments under the open sky. The best seat in Essex.',
     schedule: 'Beer garden · Major tournaments only',
-    imageUrl: '/football-pitch.jpg',
+    imageUrl: '/big-screen-garden.jpg',
     ctaLabel: 'Book a garden table',
     ctaUrl: BOOK_URL,
     order: 1,
