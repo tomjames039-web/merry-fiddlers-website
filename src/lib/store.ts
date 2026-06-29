@@ -1,5 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {
+  DEFAULT_WHATS_ON,
+  type WhatsOnItem,
+  sortWhatsOn,
+} from './whatsOn';
 
 /**
  * Persistence layer for The Merry Fiddlers.
@@ -259,4 +264,64 @@ export async function redeemVoucher(
   };
   await saveVoucher(updated);
   return { ok: true, voucher: updated };
+}
+
+// ---------------------------------------------------------------------------
+// What's On helpers (no-code events manager)
+// ---------------------------------------------------------------------------
+
+const WHATS_ON = 'whats-on';
+
+/**
+ * Returns the stored What's On items. If the store has never been populated,
+ * it is seeded once with the curated defaults so the public page and the admin
+ * manager always have real, editable content to work with.
+ */
+export async function getWhatsOnItems(): Promise<WhatsOnItem[]> {
+  const stored = await listRecords<WhatsOnItem>(WHATS_ON);
+  if (stored.length > 0) return sortWhatsOn(stored);
+  // First run — persist the defaults so future edits are stable.
+  await Promise.all(
+    DEFAULT_WHATS_ON.map((item) => putRecord(WHATS_ON, item.id, item))
+  );
+  return sortWhatsOn(DEFAULT_WHATS_ON);
+}
+
+export async function getWhatsOnItem(id: string): Promise<WhatsOnItem | null> {
+  return getRecord<WhatsOnItem>(WHATS_ON, id);
+}
+
+export async function saveWhatsOnItem(item: WhatsOnItem): Promise<void> {
+  await putRecord(WHATS_ON, item.id, item);
+}
+
+export async function updateWhatsOnItem(
+  id: string,
+  updates: Partial<WhatsOnItem>
+): Promise<WhatsOnItem | null> {
+  const existing = await getWhatsOnItem(id);
+  if (!existing) return null;
+  const merged: WhatsOnItem = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+  await putRecord(WHATS_ON, id, merged);
+  return merged;
+}
+
+export async function deleteWhatsOnItem(id: string): Promise<void> {
+  await deleteRecord(WHATS_ON, id);
+}
+
+/** Resets the What's On collection back to the curated defaults. */
+export async function resetWhatsOnItems(): Promise<WhatsOnItem[]> {
+  const existing = await listRecords<WhatsOnItem>(WHATS_ON);
+  await Promise.all(existing.map((i) => deleteRecord(WHATS_ON, i.id)));
+  await Promise.all(
+    DEFAULT_WHATS_ON.map((item) => putRecord(WHATS_ON, item.id, item))
+  );
+  return sortWhatsOn(DEFAULT_WHATS_ON);
 }

@@ -1,3 +1,29 @@
+## ACTIVE — What's On redesign + no-code What's On Manager (admin)
+
+User brief (voice, 25 Jun) — build now, planning approved:
+- HERO: the BIG SCREEN — 4 metres wide, "one of the largest in Essex", OUTDOOR in the beer garden. Major tournaments ONLY (not loads of sport).
+- SPORT: World Cup (on now, in the thick of it), Wimbledon (coming), England game THIS SATURDAY (big one, should be busy) — maybe a FB event for it.
+- OFFERS: Fri 2-for-1 cocktails (whole menu, 5–9pm); Wimbledon Pimms 2-for-1 JUGS (no price, just "2-for-1").
+- SIGNATURE (promote, NO offers): Sunday Roast (famous, very busy), Afternoon Tea (very busy).
+- THE DOMES: fine-dining à la carte, SEPARATE from the big screen, slightly further away, best in winter.
+- REMOVE: Steak Night (gone), Pub Quiz (they don't do quizzes).
+- DRAFT/OFF by default (toggle on later): live music (functions only), tasting menu, summer BBQ.
+- INSTAGRAM: embed specific reel/posts per highlight (yes).
+- FACEBOOK: rarely make events, but allow linking one (Saturday England game).
+- ADMIN: full no-code What's On manager — add/edit/delete, toggle published, set category, schedule, IG link, FB event link, image, order. Confirmed wanted.
+
+Build steps:
+1. [x] src/lib/whatsOn.ts — types, category meta, curated DEFAULT items (matches brief).
+2. [x] src/lib/store.ts — What's On CRUD helpers.
+3. [x] src/app/api/whats-on/route.ts — public GET (published) + admin GET all/POST/PATCH/DELETE, auto-seed defaults.
+4. [x] src/components/InstagramEmbed.tsx — robust IG post/reel embed w/ graceful link fallback.
+5. [x] src/app/upcoming/page.tsx — rebuilt, data-driven, refocused on screen/sport/offers/dining + IG highlights.
+6. [x] src/components/admin/WhatsOnManager.tsx — the no-code manager UI.
+7. [x] src/app/admin/page.tsx — added "What's On" tab.
+8. [x] lint + version (v99) — tsc clean, all pages 200, public API serves 9 live items. AWAIT user go-ahead before pushing to GitHub/Netlify.
+
+---
+
 ## The Merry Fiddlers — Back Office & Payments Upgrade
 
 ### Build progress
@@ -80,3 +106,9 @@
 - Don't run `bun run build` while `next dev` is running — corrupts .next. Kill dev, rm -rf .next, restart.
 - Start dev with: setsid nohup bun run dev > /tmp/dev.log 2>&1 < /dev/null & disown  (survives between bash calls).
 - Netlify secrets-scan: netlify.toml already omits NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY + STRIPE_WEBHOOK_SECRET. If a deploy fails on secrets scan for another key, add it to SECRETS_SCAN_OMIT_KEYS.
+
+DONE (29 Jun): What's On is fully data-driven + a no-code manager lives in /admin → "What's On" tab.
+- Public page hides drafts (live music, tasting menu, summer BBQ are off until toggled on).
+- IG highlights section only appears once a reel link is added to an item.
+- Reset button restores the curated starter content.
+- NOT yet on themerryfiddlers.co.uk — needs push to GitHub (tomjames039-web/merry-fiddlers-website) → Netlify. Awaiting go-ahead.

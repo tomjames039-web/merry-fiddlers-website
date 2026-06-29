@@ -11,7 +11,7 @@ const navigation = [
   { name: 'Book A Table', href: 'https://www.sevenrooms.com/reservations/themerryfiddlers', external: true },
   { name: 'Private Hire & Occasions', href: '/private-hire' },
   { name: 'Gift Vouchers', href: '/gift-vouchers' },
-  { name: 'Upcoming', href: '/upcoming' },
+  { name: "What's On", href: '/upcoming' },
   { name: 'Getting Here', href: '/getting-here' },
   { name: 'Contact Us', href: '/contact' },
 ];
