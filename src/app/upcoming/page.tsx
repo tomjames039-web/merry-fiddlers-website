@@ -121,16 +121,17 @@ export default function WhatsOnPage() {
       <main>
         {/* ---------------- Hero ---------------- */}
         <section className="relative pt-20 pb-16 lg:pt-28 lg:pb-24 bg-gradient-to-br from-[#1d3a3a] via-[#2d4a4a] to-[#1d3a3a] text-white overflow-hidden">
-          {/* Stadium atmosphere behind the hero */}
+          {/* Real garden big-screen photo behind the hero */}
           <img
-            src="/stadium-night.jpg"
+            src="/big-screen-garden.jpg"
             alt=""
             aria-hidden
-            className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-25"
+            className="pointer-events-none absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: 'center 30%' }}
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#1d3a3a]/92 via-[#2d4a4a]/80 to-[#1d3a3a]/92"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#1d3a3a]/85 via-[#1d3a3a]/60 to-[#1d3a3a]/92"
           />
           <div
             aria-hidden
@@ -163,11 +164,17 @@ export default function WhatsOnPage() {
               </div>
               <h1
                 className="text-5xl md:text-6xl lg:text-7xl mb-6 leading-none"
-                style={{ fontFamily: "'Cinzel', serif" }}
+                style={{
+                  fontFamily: "'Cinzel', serif",
+                  textShadow: '0 2px 18px rgba(0,0,0,0.5)',
+                }}
               >
                 What's <span className="text-[#c9a55c]">On</span>
               </h1>
-              <p className="text-lg md:text-xl text-white/80">
+              <p
+                className="text-lg md:text-xl text-white/90"
+                style={{ textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}
+              >
                 Major tournaments on one of the largest screens in Essex,
                 two-for-one weekends at the bar, and the Sunday roast people
                 travel for.
