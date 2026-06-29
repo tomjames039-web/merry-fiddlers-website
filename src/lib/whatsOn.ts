@@ -38,6 +38,8 @@ export interface WhatsOnItem {
   instagramUrl?: string;
   /** link a specific Facebook event. */
   facebookEventUrl?: string;
+  /** auto-update this item with a live sports fixture (e.g. 'england'). */
+  trackTeam?: string;
   /** optional hero/card image (path under /public or full URL). */
   imageUrl?: string;
   ctaLabel?: string;
@@ -103,7 +105,7 @@ export const DEFAULT_WHATS_ON: WhatsOnItem[] = [
     description:
       'Our enormous 4-metre screen takes pride of place in the beer garden — gather your friends, grab a cold one and watch the biggest sporting moments under the open sky. The best seat in Essex.',
     schedule: 'Beer garden · Major tournaments only',
-    imageUrl: '/pub-front-4.jpeg',
+    imageUrl: '/football-pitch.jpg',
     ctaLabel: 'Book a garden table',
     ctaUrl: BOOK_URL,
     order: 1,
@@ -127,16 +129,17 @@ export const DEFAULT_WHATS_ON: WhatsOnItem[] = [
   },
   {
     id: 'england-saturday',
-    title: 'England — The Big One',
+    title: 'England on the Big Screen',
     category: 'screen',
     status: 'published',
     featured: true,
-    subtitle: 'This Saturday',
-    badge: 'Big match',
+    subtitle: 'Up next',
+    badge: 'England',
     description:
-      "A massive England game on the big screen this Saturday. It's going to be busy — get down early to claim your spot in the garden and soak up the atmosphere.",
-    schedule: 'Saturday · Kick-off on the big screen',
+      'Every England game, live on the 4-metre garden screen. It gets busy for the big ones — get down early to claim your spot and soak up the atmosphere. The next fixture updates automatically below.',
+    schedule: 'Live on the big screen',
     facebookEventUrl: 'https://www.facebook.com/themerryfiddlerspub/',
+    trackTeam: 'england',
     order: 3,
     createdAt: SEED,
     updatedAt: SEED,

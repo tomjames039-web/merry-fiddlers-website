@@ -37,6 +37,7 @@ interface FormState {
   schedule: string;
   instagramUrl: string;
   facebookEventUrl: string;
+  trackTeam: string;
   imageUrl: string;
   ctaLabel: string;
   ctaUrl: string;
@@ -55,6 +56,7 @@ function blankForm(): FormState {
     schedule: '',
     instagramUrl: '',
     facebookEventUrl: '',
+    trackTeam: '',
     imageUrl: '',
     ctaLabel: '',
     ctaUrl: '',
@@ -74,6 +76,7 @@ function toForm(item: WhatsOnItem): FormState {
     schedule: item.schedule || '',
     instagramUrl: item.instagramUrl || '',
     facebookEventUrl: item.facebookEventUrl || '',
+    trackTeam: item.trackTeam || '',
     imageUrl: item.imageUrl || '',
     ctaLabel: item.ctaLabel || '',
     ctaUrl: item.ctaUrl || '',
@@ -568,6 +571,22 @@ export default function WhatsOnManager({ token }: { token: string }) {
                   />
                 </Field>
               </div>
+
+              <Field
+                label="Auto-update with live fixtures"
+                icon={<Tv className="w-3.5 h-3.5 text-[#c9a55c]" />}
+              >
+                <select
+                  value={form.trackTeam}
+                  onChange={(e) => setForm({ ...form, trackTeam: e.target.value })}
+                  className={inputClass}
+                >
+                  <option value="">No — just use the text above</option>
+                  <option value="england">
+                    England (men&rsquo;s football) — shows the next match live
+                  </option>
+                </select>
+              </Field>
 
               <Field
                 label="Image URL (optional)"

@@ -111,4 +111,13 @@ DONE (29 Jun): What's On is fully data-driven + a no-code manager lives in /admi
 - Public page hides drafts (live music, tasting menu, summer BBQ are off until toggled on).
 - IG highlights section only appears once a reel link is added to an item.
 - Reset button restores the curated starter content.
+- Added a collapsible "How to update What's On" staff guide at the top of the manager.
+- PUSHED to GitHub master (commit c4fd79d) → Netlify auto-deploy. Repo: tomjames039-web/merry-fiddlers-website (default branch = master). Local .git was empty; re-linked via init + fetch + mixed reset, pushed cleanly (9 files, 1936+/253-). Prod persistence = Netlify Blobs (auto-seeds starter content on first load).
+
+ROUND 2 (29 Jun) — user feedback fixes:
+- Instagram "free trial" watermark removed: SocialFeed now defaults to the curated photo wall (no LightWidget). Override via NEXT_PUBLIC_INSTAGRAM_EMBED_URL.
+- Hero now has a stadium-night.jpg background (was empty teal). Big Screen feature uses football-pitch.jpg (was garden/food). Both clean Unsplash, in /public.
+- LIVE England fixture: /api/england-fixture (TheSportsDB free key 3, team 133914, 30-min cache). Card auto-shows next match (e.g. England vs DR Congo, Wed 1 Jul). Self-healing: tracks by trackTeam==='england' OR title contains "england", and feature image heals old '/pub-front-4.jpeg'. So it works on prod even without a reseed.
+- Manager: added "Auto-update with live fixtures" select (None / England).
+- If prod shows stale England wording, click Reset once (images + fixture already self-heal).
 - NOT yet on themerryfiddlers.co.uk — needs push to GitHub (tomjames039-web/merry-fiddlers-website) → Netlify. Awaiting go-ahead.

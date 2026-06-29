@@ -36,6 +36,33 @@ const categoryIcons: Record<WhatsOnCategory, React.ElementType> = {
   special: Sparkles,
 };
 
+interface EnglandFixture {
+  matchup: string;
+  opponent: string;
+  isHome: boolean;
+  competition: string;
+  dateEvent: string | null;
+  kickoffISO: string | null;
+  hasTime: boolean;
+  venue: string | null;
+}
+
+function tracksEngland(item: WhatsOnItem): boolean {
+  return item.trackTeam === 'england' || /england/i.test(item.title);
+}
+
+function fmtFixtureDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/London',
+  });
+}
+
+function fmtFixtureTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London',
+  });
+}
+
 export default function WhatsOnPage() {
   const [items, setItems] = useState<WhatsOnItem[]>(() =>
     publishedWhatsOn(DEFAULT_WHATS_ON)
@@ -54,6 +81,17 @@ export default function WhatsOnPage() {
     };
   }, []);
 
+  // Live England fixture (auto-updates via free SportsDB API).
+  const [fixture, setFixture] = useState<EnglandFixture | null>(null);
+  useEffect(() => {
+    fetch('/api/england-fixture')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.ok && d.fixture) setFixture(d.fixture as EnglandFixture);
+      })
+      .catch(() => {/* card falls back to its static text */});
+  }, []);
+
   const screen = items.filter((i) => i.category === 'screen');
   const offers = items.filter((i) => i.category === 'offer');
   const dining = items.filter((i) => i.category === 'dining');
@@ -65,6 +103,11 @@ export default function WhatsOnPage() {
   const feature =
     screen.find((i) => i.featured) || screen[0] || null;
   const sportCards = screen.filter((i) => !feature || i.id !== feature.id);
+  // Self-healing image: replace the old garden default with the sport image.
+  const featureImg =
+    feature && feature.imageUrl && feature.imageUrl !== '/pub-front-4.jpeg'
+      ? feature.imageUrl
+      : '/football-pitch.jpg';
 
   return (
     <div className="min-h-screen bg-[#f8f6f1]">
@@ -73,6 +116,17 @@ export default function WhatsOnPage() {
       <main>
         {/* ---------------- Hero ---------------- */}
         <section className="relative pt-20 pb-16 lg:pt-28 lg:pb-24 bg-gradient-to-br from-[#1d3a3a] via-[#2d4a4a] to-[#1d3a3a] text-white overflow-hidden">
+          {/* Stadium atmosphere behind the hero */}
+          <img
+            src="/stadium-night.jpg"
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-25"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#1d3a3a]/92 via-[#2d4a4a]/80 to-[#1d3a3a]/92"
+          />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-60"
@@ -122,6 +176,10 @@ export default function WhatsOnPage() {
                 .slice(0, 4)
                 .map((i) => {
                   const Icon = categoryIcons[i.category];
+                  const live =
+                    tracksEngland(i) && fixture?.kickoffISO
+                      ? `vs ${fixture.opponent}, ${fmtFixtureDate(fixture.kickoffISO)}`
+                      : i.subtitle;
                   return (
                     <span
                       key={i.id}
@@ -129,9 +187,7 @@ export default function WhatsOnPage() {
                     >
                       <Icon className="w-4 h-4 text-[#c9a55c]" />
                       <span className="font-medium">{i.title}</span>
-                      {i.subtitle && (
-                        <span className="text-white/50">· {i.subtitle}</span>
-                      )}
+                      {live && <span className="text-white/50">· {live}</span>}
                     </span>
                   );
                 })}
@@ -148,7 +204,7 @@ export default function WhatsOnPage() {
                   {/* Image */}
                   <div className="relative min-h-[280px] lg:min-h-[460px]">
                     <img
-                      src={feature.imageUrl || '/pub-front-4.jpeg'}
+                      src={featureImg}
                       alt={feature.title}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
@@ -221,7 +277,11 @@ export default function WhatsOnPage() {
               />
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {sportCards.map((ev) => (
-                  <SportCard key={ev.id} item={ev} />
+                  <SportCard
+                    key={ev.id}
+                    item={ev}
+                    fixture={tracksEngland(ev) ? fixture : null}
+                  />
                 ))}
               </div>
             </div>
@@ -379,7 +439,10 @@ function SectionHeading({
   );
 }
 
-function SportCard({ item }: { item: WhatsOnItem }) {
+function SportCard({
+  item,
+  fixture,
+}: { item: WhatsOnItem; fixture?: EnglandFixture | null }) {
   const Icon = categoryIcons[item.category];
   return (
     <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col">
@@ -403,7 +466,28 @@ function SportCard({ item }: { item: WhatsOnItem }) {
           {item.title}
         </h3>
         <p className="text-gray-600 text-sm leading-relaxed flex-1">{item.description}</p>
-        {item.schedule && (
+        {fixture && (
+          <div className="mt-4 rounded-xl bg-[#2d4a4a] text-white p-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              <span className="text-[11px] uppercase tracking-wider text-[#c9a55c] font-semibold">
+                Next match · auto-updated
+              </span>
+            </div>
+            <p className="font-semibold leading-tight">{fixture.matchup}</p>
+            <p className="text-sm text-white/70 mt-0.5">
+              {fixture.kickoffISO && fmtFixtureDate(fixture.kickoffISO)}
+              {fixture.hasTime && fixture.kickoffISO
+                ? ` · ${fmtFixtureTime(fixture.kickoffISO)}`
+                : ''}
+              {fixture.competition ? ` · ${fixture.competition}` : ''}
+            </p>
+          </div>
+        )}
+        {item.schedule && !fixture && (
           <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-4 pt-4 border-t border-gray-100">
             <Clock className="w-4 h-4 text-[#c9a55c]" /> {item.schedule}
           </p>

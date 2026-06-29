@@ -8,14 +8,12 @@ const FACEBOOK_URL =
   'https://www.facebook.com/themerryfiddlerspub/';
 const INSTAGRAM_URL = 'https://www.instagram.com/themerryfiddlers/';
 
-// Live Instagram feed via LightWidget (@themerryfiddlers). This is the built-in
-// default so the live feed works on production with no extra config. To change
-// the feed later, regenerate the widget and update this URL, or override it with
-// the NEXT_PUBLIC_INSTAGRAM_EMBED_URL env var. See .same/SOCIAL-FEED-SETUP.md
-const DEFAULT_INSTAGRAM_EMBED =
-  'https://lightwidget.com/widgets/f16a9764a50f50719f77383080088076.html';
-const ENV_INSTAGRAM_EMBED =
-  process.env.NEXT_PUBLIC_INSTAGRAM_EMBED_URL || DEFAULT_INSTAGRAM_EMBED;
+// Instagram feed. The free LightWidget plan stamps a "free trial" watermark on
+// the embed, so by default we show the curated photo wall below (real pub
+// photos, no watermark, always renders). To switch to a live feed later, set
+// NEXT_PUBLIC_INSTAGRAM_EMBED_URL to a clean widget URL (e.g. Behold.so or a
+// paid LightWidget). See .same/SOCIAL-FEED-SETUP.md
+const ENV_INSTAGRAM_EMBED = process.env.NEXT_PUBLIC_INSTAGRAM_EMBED_URL || '';
 
 // Live Facebook feed via the official Page Plugin (no API key / signup needed).
 const FB_PLUGIN_SRC =
