@@ -1,198 +1,162 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight, Users, PartyPopper, Utensils, Music } from 'lucide-react';
+import {
+  ChevronRight, Download, ArrowRight,
+  Heart, Flower2, TreePine, Cake, Briefcase, PartyPopper, Church, Baby,
+  UtensilsCrossed, Tent,
+} from 'lucide-react';
+import Header from '@/components/Header';
+import SiteFooter from '@/components/SiteFooter';
+import { EVENTS } from '@/lib/events';
 
-const navigation = [
-  { name: 'Home', href: '/' },
-  { name: 'Menus', href: '/menu' },
-  { name: 'Book A Table', href: 'https://www.sevenrooms.com/reservations/themerryfiddlers', external: true },
-  { name: 'Private Hire & Occasions', href: '/private-hire' },
-  { name: 'Upcoming', href: '/upcoming' },
-  { name: 'Contact Us', href: '/contact' },
-];
+const SITE_URL = 'https://themerryfiddlers.co.uk';
 
-const occasions = [
-  { icon: PartyPopper, title: 'Birthday Parties', description: 'Celebrate your special day with friends and family in our beautiful venue.' },
-  { icon: Users, title: 'Corporate Events', description: 'Host your business meetings, team building events, or corporate dinners.' },
-  { icon: Utensils, title: 'Private Dining', description: 'Exclusive dining experiences for intimate gatherings and special occasions.' },
-  { icon: Music, title: 'Celebrations', description: 'Anniversaries, engagements, christenings, and all of life\'s milestones.' },
-];
+export const metadata: Metadata = {
+  title: 'Private Hire & Events Venue in Epping, Essex | The Merry Fiddlers',
+  description:
+    "Private hire and events in Epping at The Merry Fiddlers — weddings, wakes, Christmas & work parties, christenings, baby showers and private dining in our heated domes. Download our brochure.",
+  alternates: { canonical: `${SITE_URL}/private-hire` },
+  openGraph: {
+    title: 'Private Hire & Events Venue in Epping, Essex | The Merry Fiddlers',
+    description:
+      'Weddings, wakes, parties, christenings and private dining at a characterful country pub on the edge of Epping Forest.',
+    url: `${SITE_URL}/private-hire`,
+    siteName: 'The Merry Fiddlers',
+    type: 'website',
+    images: [{ url: `${SITE_URL}/pub-front-1.jpeg` }],
+  },
+};
+
+const icons: Record<string, React.ElementType> = {
+  weddings: Heart,
+  'funeral-wakes': Flower2,
+  'christmas-parties': TreePine,
+  'birthday-parties': Cake,
+  'corporate-events': Briefcase,
+  'work-parties': PartyPopper,
+  christenings: Church,
+  'baby-showers': Baby,
+  'private-dining': UtensilsCrossed,
+  'festival-venue': Tent,
+};
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+    { '@type': 'ListItem', position: 2, name: 'Private Hire & Occasions', item: `${SITE_URL}/private-hire` },
+  ],
+};
 
 export default function PrivateHirePage() {
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="teal-gradient sticky top-0 z-50">
-        <div className="hidden md:block border-b border-white/10">
-          <div className="container mx-auto px-4 py-2 flex justify-between items-center text-sm text-white/80">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              <a href="tel:+441992572142" className="hover:text-white">+44 1992 572142</a>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>Wed-Sat: 12:00-00:00 | Sun: 12:00-20:00</span>
-            </div>
-          </div>
-        </div>
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <Link href="/" className="flex-shrink-0">
-              <img src="/logo.png" alt="The Merry Fiddlers" className="h-14 md:h-16 w-auto" />
-            </Link>
-            <nav className="hidden lg:flex items-center gap-1">
-              {navigation.map((item) => (
-                item.external ? (
-                  <a key={item.name} href={item.href} target="_blank" rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white uppercase tracking-[0.12em] elegant-underline"
-                    style={{ fontFamily: "'Cinzel', serif" }}>
-                    {item.name}
-                  </a>
-                ) : (
-                  <Link key={item.name} href={item.href}
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white uppercase tracking-[0.12em] elegant-underline"
-                    style={{ fontFamily: "'Cinzel', serif" }}>
-                    {item.name}
-                  </Link>
-                )
-              ))}
+    <div className="min-h-screen bg-white">
+      <Header />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      <main>
+        {/* Hero */}
+        <section className="relative py-20 lg:py-28 overflow-hidden text-white">
+          <img src="/pub-front-1.jpeg" alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1d3a3a]/92 via-[#2d4a4a]/82 to-[#1d3a3a]/92" />
+          <div className="container mx-auto px-4 relative z-10 text-center">
+            <nav className="flex items-center justify-center gap-2 text-sm text-white/60 mb-6">
+              <Link href="/" className="hover:text-white">Home</Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-[#c9a55c]">Private Hire & Occasions</span>
             </nav>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl mb-5" style={{ fontFamily: "'Cinzel', serif", textShadow: '0 2px 18px rgba(0,0,0,0.45)' }}>
+              Private Hire & Events
+            </h1>
+            <p className="text-lg text-white/85 max-w-2xl mx-auto">
+              From weddings and wakes to work parties and private dining under the domes —
+              a characterful country pub on the edge of Epping Forest for every occasion.
+            </p>
+            <div className="mt-8">
+              <Link
+                href="/download-brochure"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#c9a55c] hover:bg-[#b8944b] text-[#1d3a3a] rounded-lg font-semibold transition-colors"
+              >
+                <Download className="w-4 h-4" /> Download Event Brochure
+              </Link>
+            </div>
           </div>
-        </div>
-      </header>
+        </section>
 
-      {/* Page Header */}
-      <section className="py-16 bg-[#f8f6f1]">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-4">
-            <Link href="/" className="hover:text-[#2d4a4a]">Home</Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-[#2d4a4a]">Private Hire & Occasions</span>
+        {/* Event grid */}
+        <section className="py-16 lg:py-20">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12 max-w-2xl mx-auto">
+              <span className="inline-flex items-center gap-2 text-[#c9a55c] uppercase tracking-[0.25em] text-xs font-semibold">
+                <span className="h-px w-8 bg-[#c9a55c]/60" /> Occasions
+                <span className="h-px w-8 bg-[#c9a55c]/60" />
+              </span>
+              <h2 className="text-3xl md:text-4xl text-[#2d4a4a] mt-4" style={{ fontFamily: "'Cinzel', serif" }}>
+                Whatever You&rsquo;re Celebrating
+              </h2>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {EVENTS.map((ev) => {
+                const Icon = icons[ev.slug] || PartyPopper;
+                return (
+                  <Link
+                    key={ev.slug}
+                    href={`/private-hire/${ev.slug}`}
+                    className="group bg-[#f8f6f1] rounded-2xl p-7 border border-transparent hover:border-[#c9a55c]/40 hover:shadow-lg transition-all"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#2d4a4a] flex items-center justify-center">
+                        <Icon className="w-6 h-6 text-[#c9a55c]" />
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-[#c9a55c] group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <span className="text-[#c9a55c] text-xs uppercase tracking-wider font-semibold">{ev.eyebrow}</span>
+                    <h3 className="text-xl text-[#2d4a4a] mt-1 mb-2" style={{ fontFamily: "'Cinzel', serif" }}>{ev.name}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{ev.highlights[0].body}</p>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-          <h1 className="text-5xl md:text-6xl text-[#2d4a4a] mb-4">Private Hire & Occasions</h1>
-          <div className="section-divider" />
-          <p className="text-lg text-gray-600 mt-6 max-w-2xl mx-auto">
-            Make your special occasion unforgettable at The Merry Fiddlers. We offer part and full venue hire for all events.
-          </p>
-        </div>
-      </section>
+        </section>
 
-      {/* Occasions Grid */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {occasions.map((occasion, index) => (
-              <div key={index} className="bg-[#f8f6f1] rounded-lg p-8 card-hover text-center">
-                <occasion.icon className="w-12 h-12 text-[#c9a55c] mx-auto mb-4" />
-                <h3 className="text-2xl text-[#2d4a4a] mb-4">{occasion.title}</h3>
-                <p className="text-gray-600">{occasion.description}</p>
+        {/* Venue features */}
+        <section className="py-16 lg:py-20 bg-[#f8f6f1]">
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-3xl md:text-4xl text-[#2d4a4a] mb-3" style={{ fontFamily: "'Cinzel', serif" }}>Our Venue</h2>
+            <div className="w-16 h-1 bg-[#c9a55c] mx-auto" />
+            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12 text-left">
+              <div>
+                <h3 className="text-xl text-[#2d4a4a] mb-2" style={{ fontFamily: "'Cinzel', serif" }}>Epping&rsquo;s Largest Beer Garden</h3>
+                <p className="text-gray-600 text-sm">Beautiful outdoor space for summer celebrations, with our 4-metre big screen.</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Venue Features */}
-      <section className="py-20 bg-[#f8f6f1]">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl text-[#2d4a4a] mb-4">Our Venue</h2>
-          <div className="section-divider" />
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12">
-            <div>
-              <h4 className="text-xl text-[#2d4a4a] mb-2">Epping&apos;s Largest Beer Garden</h4>
-              <p className="text-gray-600">Beautiful outdoor space perfect for summer celebrations.</p>
-            </div>
-            <div>
-              <h4 className="text-xl text-[#2d4a4a] mb-2">Flexible Spaces</h4>
-              <p className="text-gray-600">Available for part or full hire to suit your needs.</p>
-            </div>
-            <div>
-              <h4 className="text-xl text-[#2d4a4a] mb-2">Bespoke Menus</h4>
-              <p className="text-gray-600">Tailored dining options for your special event.</p>
-            </div>
-          </div>
-          <div className="mt-12">
-            <Link
-              href="/download-brochure"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#2d4a4a] hover:bg-[#1d3a3a] text-white transition-all uppercase tracking-wider text-sm font-medium mr-4"
-              style={{ fontFamily: "'Cinzel', serif" }}
-            >
-              Download Event Brochure
-            </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-[#2d4a4a] text-[#2d4a4a] hover:bg-[#2d4a4a] hover:text-white transition-all uppercase tracking-wider text-sm font-medium"
-              style={{ fontFamily: "'Cinzel', serif" }}
-            >
-              Enquire Now
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="teal-gradient text-white py-16">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            <div>
-              <img src="/logo.png" alt="The Merry Fiddlers" className="h-16 w-auto mb-4" />
-              <p className="text-white/70 text-sm">Country Pub & Restaurant proudly serving Epping & surrounding areas since the 1600s.</p>
-              <div className="flex gap-4 mt-6">
-                <a href="https://www.facebook.com/themerryfiddlerspub/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center">
-                  <Facebook className="w-5 h-5" />
-                </a>
-                <a href="https://www.instagram.com/themerryfiddlers/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center">
-                  <Instagram className="w-5 h-5" />
-                </a>
+              <div>
+                <h3 className="text-xl text-[#2d4a4a] mb-2" style={{ fontFamily: "'Cinzel', serif" }}>Heated Dining Domes</h3>
+                <p className="text-gray-600 text-sm">Intimate, fairy-lit domes for private dining whatever the weather.</p>
+              </div>
+              <div>
+                <h3 className="text-xl text-[#2d4a4a] mb-2" style={{ fontFamily: "'Cinzel', serif" }}>Bespoke Menus</h3>
+                <p className="text-gray-600 text-sm">Tailored dining options built around your event and your guests.</p>
               </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-6 uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: "'Cinzel', serif" }}>
-                <Clock className="w-5 h-5 text-[#c9a55c]" />
-                Opening Hours
-              </h3>
-              <ul className="space-y-2 text-white/70 text-sm">
-                <li className="flex justify-between"><span>Monday - Tuesday</span><span className="text-red-400">Closed</span></li>
-                <li className="flex justify-between"><span>Wednesday - Saturday</span><span className="text-white">12:00 - 00:00</span></li>
-                <li className="flex justify-between"><span>Sunday</span><span className="text-white">12:00 - 20:00</span></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-6 uppercase tracking-wider" style={{ fontFamily: "'Cinzel', serif" }}>Contact Us</h3>
-              <ul className="space-y-4 text-sm">
-                <li className="flex items-start gap-3 text-white/70">
-                  <Phone className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
-                  <a href="tel:+441992572142" className="hover:text-white">+44 1992 572142</a>
-                </li>
-                <li className="flex items-start gap-3 text-white/70">
-                  <Mail className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
-                  <a href="mailto:info@themerryfiddlers.co.uk" className="hover:text-white">info@themerryfiddlers.co.uk</a>
-                </li>
-                <li className="flex items-start gap-3 text-white/70">
-                  <MapPin className="w-5 h-5 text-[#c9a55c] flex-shrink-0 mt-0.5" />
-                  <span>4 Fiddlers Hamlet, Epping CM16 7PY</span>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-6 uppercase tracking-wider" style={{ fontFamily: "'Cinzel', serif" }}>Quick Links</h3>
-              <ul className="space-y-2 text-sm">
-                {navigation.map((item) => (
-                  <li key={item.name}>
-                    {item.external ? (
-                      <a href={item.href} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-white">{item.name}</a>
-                    ) : (
-                      <Link href={item.href} className="text-white/70 hover:text-white">{item.name}</Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
+            <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/download-brochure" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#2d4a4a] hover:bg-[#1d3a3a] text-white rounded-lg transition-all uppercase tracking-wider text-sm font-medium" style={{ fontFamily: "'Cinzel', serif" }}>
+                Download Brochure
+              </Link>
+              <Link href="/contact" className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-[#2d4a4a] text-[#2d4a4a] hover:bg-[#2d4a4a] hover:text-white rounded-lg transition-all uppercase tracking-wider text-sm font-medium" style={{ fontFamily: "'Cinzel', serif" }}>
+                Enquire Now
+              </Link>
             </div>
           </div>
-          <div className="border-t border-white/10 mt-12 pt-8 text-center text-white/50 text-sm">
-            <p>&copy; {new Date().getFullYear()} The Merry Fiddlers. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+        </section>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 }
