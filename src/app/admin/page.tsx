@@ -53,6 +53,16 @@ const PIPELINE: { key: LeadStatus; label: string; accent: string; dot: string }[
 
 const sourceLabels: Record<string, string> = {
   'brochure-download': 'Brochure',
+  'brochure-weddings': 'Brochure · Weddings',
+  'brochure-funeral-wakes': 'Brochure · Wakes',
+  'brochure-christmas-parties': 'Brochure · Christmas',
+  'brochure-birthday-parties': 'Brochure · Birthday',
+  'brochure-corporate-events': 'Brochure · Corporate',
+  'brochure-work-parties': 'Brochure · Work Party',
+  'brochure-christenings': 'Brochure · Christening',
+  'brochure-baby-showers': 'Brochure · Baby Shower',
+  'brochure-private-dining': 'Brochure · Private Dining',
+  'brochure-festival-venue': 'Brochure · Festival',
   'gift-voucher-purchase': 'Gift Voucher',
   'afternoon-tea-purchase': 'Afternoon Tea',
   contact: 'Contact Form',

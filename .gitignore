@@ -42,3 +42,9 @@ next-env.d.ts
 
 # local data store (dev fallback for Netlify Blobs)
 /.data
+
+# Same workspace meta
+/.same
+
+# Netlify local
+/.netlify

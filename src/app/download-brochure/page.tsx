@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight, FileText, Download, Check, Loader2, PartyPopper, Users, Heart, Baby, Cake } from 'lucide-react';
 import Header from '@/components/Header';
+import { getEvent } from '@/lib/events';
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -37,6 +38,20 @@ export default function DownloadBrochurePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [agreedToMarketing, setAgreedToMarketing] = useState(false);
+  const [eventTag, setEventTag] = useState('');
+  const [eventName, setEventName] = useState('');
+
+  // Pick up ?event=<slug> from the event landing pages so the lead is tagged.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('event') || '';
+    if (!slug) return;
+    const ev = getEvent(slug);
+    setEventTag(slug);
+    if (ev) {
+      setEventName(ev.name);
+      setFormData((prev) => ({ ...prev, eventType: ev.leadEventType }));
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +62,11 @@ export default function DownloadBrochurePage() {
       await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, agreedToMarketing, source: 'brochure-download' }),
+        body: JSON.stringify({
+          ...formData,
+          agreedToMarketing,
+          source: eventTag ? `brochure-${eventTag}` : 'brochure-download',
+        }),
       });
 
       setIsSubmitted(true);
@@ -80,6 +99,11 @@ export default function DownloadBrochurePage() {
           <p className="text-lg text-white/80 max-w-2xl mx-auto">
             Download our comprehensive event brochure to discover all the ways we can make your special occasion unforgettable.
           </p>
+          {eventName && (
+            <p className="mt-5 inline-block bg-[#c9a55c] text-[#1d3a3a] px-4 py-1.5 rounded-full text-sm font-semibold">
+              Enquiry for: {eventName}
+            </p>
+          )}
         </div>
       </section>
 
