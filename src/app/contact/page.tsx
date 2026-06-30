@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight } from 'lucide-react';
 import Header from '@/components/Header';
+import ContactForm from '@/components/ContactForm';
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -40,28 +41,7 @@ export default function ContactPage() {
             {/* Contact Form */}
             <div>
               <h2 className="text-3xl text-[#2d4a4a] mb-6">Send Us a Message</h2>
-              <form className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="Name" className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-                  <input type="tel" placeholder="Phone" className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-                </div>
-                <input type="email" placeholder="Email Address" className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-                <select className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a] text-gray-500">
-                  <option value="">Select Enquiry Type</option>
-                  <option value="general">General Enquiry</option>
-                  <option value="reservation">Reservation</option>
-                  <option value="private-hire">Private Hire</option>
-                  <option value="feedback">Feedback</option>
-                </select>
-                <textarea placeholder="Message" rows={5} className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-                <button
-                  type="submit"
-                  className="w-full py-4 bg-[#c9a55c] hover:bg-[#b8944b] text-white uppercase tracking-wider font-medium transition-all"
-                  style={{ fontFamily: "'Cinzel', serif" }}
-                >
-                  Submit
-                </button>
-              </form>
+              <ContactForm withEnquiryType source="contact-page" />
             </div>
 
             {/* Contact Info */}

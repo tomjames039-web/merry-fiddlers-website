@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, FileText, CalendarCheck, Star } from 'lucide-react';
 import Header from '@/components/Header';
+import ContactForm from '@/components/ContactForm';
 import SocialFeed from '@/components/SocialFeed';
 
 const navigation = [
@@ -226,21 +227,7 @@ export default function Home() {
           </h2>
           <div className="section-divider" />
           <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto mt-12">
-            <form className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <input type="text" placeholder="Name" className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-                <input type="tel" placeholder="Phone" className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-              </div>
-              <input type="email" placeholder="Email Address" className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-              <textarea placeholder="Message" rows={4} className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-[#2d4a4a]" />
-              <button
-                type="submit"
-                className="w-full py-4 bg-[#c9a55c] hover:bg-[#b8944b] text-white uppercase tracking-wider font-medium transition-all"
-                style={{ fontFamily: "'Cinzel', serif" }}
-              >
-                Submit
-              </button>
-            </form>
+            <ContactForm source="homepage" />
             <div className="space-y-6">
               <div className="flex items-start gap-4">
                 <MapPin className="w-6 h-6 text-[#2d4a4a] flex-shrink-0 mt-1" />
