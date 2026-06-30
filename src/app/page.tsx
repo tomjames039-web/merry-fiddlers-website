@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, FileText, CalendarCheck, Star } from 'lucide-react';
-import SpecialOfferBanner from '@/components/SpecialOfferBanner';
+import Header from '@/components/Header';
 import SocialFeed from '@/components/SocialFeed';
 
 const navigation = [
@@ -26,64 +26,7 @@ const testimonials = [
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* Special Offer Banner */}
-      <SpecialOfferBanner />
-
-      {/* Header */}
-      <header className="teal-gradient sticky top-0 z-50">
-        {/* Top bar */}
-        <div className="hidden md:block border-b border-white/10">
-          <div className="container mx-auto px-4 py-2 flex justify-between items-center text-sm text-white/80">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              <a href="tel:+441992572142" className="hover:text-white">+44 1992 572142</a>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>Wed-Sat: 12:00-00:00 | Sun: 12:00-20:00</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Main nav */}
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <Link href="/" className="flex-shrink-0">
-              {/* Logo - using direct URL to ensure transparency works */}
-              <img
-                src="/logo.png"
-                alt="The Merry Fiddlers"
-                className="h-14 md:h-16 w-auto"
-              />
-            </Link>
-            <nav className="hidden lg:flex items-center gap-1">
-              {navigation.map((item) => (
-                item.external ? (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white uppercase tracking-[0.12em] elegant-underline"
-                    style={{ fontFamily: "'Cinzel', serif" }}
-                  >
-                    {item.name}
-                  </a>
-                ) : (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white uppercase tracking-[0.12em] elegant-underline"
-                    style={{ fontFamily: "'Cinzel', serif" }}
-                  >
-                    {item.name}
-                  </Link>
-                )
-              ))}
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="relative h-[85vh] min-h-[600px] flex items-center justify-center">
