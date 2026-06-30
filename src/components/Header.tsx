@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Private Hire & Occasions', href: '/private-hire' },
   { name: 'Gift Vouchers', href: '/gift-vouchers' },
   { name: "What's On", href: '/upcoming' },
+  { name: 'Journal', href: '/blog' },
   { name: 'Getting Here', href: '/getting-here' },
   { name: 'Contact Us', href: '/contact' },
 ];
