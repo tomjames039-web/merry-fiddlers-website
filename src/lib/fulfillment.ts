@@ -5,11 +5,15 @@ import {
   saveVoucher,
   saveLead,
   findVoucherBySession,
+  markBookingPaid,
+  getTicketEvent,
 } from './store';
+import type { TicketBooking } from './tickets';
 import {
   sendGiftVoucherEmail,
   sendAfternoonTeaVoucherEmail,
   sendBusinessNotificationEmail,
+  sendEventTicketEmail,
   generateGiftVoucherCode,
   generateVoucherCode,
 } from './email';
@@ -17,10 +21,14 @@ import {
 export interface FulfillResult {
   status: 'paid' | 'unpaid' | 'not_configured' | 'error';
   voucher?: Voucher;
+  booking?: TicketBooking;
   alreadyFulfilled?: boolean;
   type?: string;
   error?: string;
 }
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://themerryfiddlers.co.uk';
 
 /**
  * Verifies a Stripe Checkout session is paid, then records the voucher,
@@ -169,6 +177,64 @@ export async function fulfillCheckout(sessionId: string): Promise<FulfillResult>
     );
 
     return { status: 'paid', voucher, type: 'afternoon-tea' };
+  }
+
+  if (md.type === 'event-ticket') {
+    const ref = md.bookingRef;
+    if (!ref) return { status: 'error', error: 'missing_booking_ref' };
+
+    const result = await markBookingPaid(ref, {
+      amount: amountTotal,
+      paymentRef,
+      sessionId,
+    });
+    if (!result) {
+      console.error('event-ticket: booking not found for ref', ref);
+      return { status: 'error', error: 'booking_not_found' };
+    }
+
+    const { booking, alreadyPaid } = result;
+
+    // Only fire the side-effects on the first paid transition (idempotent).
+    if (!alreadyPaid) {
+      const event = await getTicketEvent(booking.eventId);
+
+      await sendEventTicketEmail({ event, booking, siteUrl: SITE_URL }).catch(
+        (e) => console.error('event ticket email error', e)
+      );
+
+      await sendBusinessNotificationEmail({
+        subject: `New Ticket Booking - ${event.name} (${booking.quantity} ${booking.quantity === 1 ? 'ticket' : 'tickets'}) - ${booking.ref}`,
+        heading: `Ticket Booking · ${event.name}`,
+        replyTo: booking.purchaserEmail,
+        rows: [
+          { label: 'Reference', value: booking.ref },
+          { label: 'Tickets', value: String(booking.quantity) },
+          { label: 'Amount', value: `GBP ${booking.amount.toFixed(2)}` },
+          {
+            label: 'Lead booker',
+            value: `${booking.purchaserName} (${booking.purchaserEmail}, ${booking.purchaserPhone})`,
+          },
+          { label: 'Attendees', value: booking.attendees.join(', ') || '-' },
+          { label: 'Preferred area', value: booking.viewingAreaLabel },
+          { label: 'Accessibility', value: booking.accessibilityNote || '-' },
+          { label: 'Booking notes', value: booking.bookingNotes || '-' },
+        ],
+      }).catch((e) => console.error('business notify error', e));
+
+      await saveLead(
+        buildLead({
+          source: 'event-ticket-purchase',
+          fullName: booking.purchaserName || 'Ticket Customer',
+          email: booking.purchaserEmail || 'unknown@unknown',
+          eventType: event.name,
+          message: `Booked ${booking.quantity} ticket(s) for ${event.name}. Ref: ${booking.ref}. Area: ${booking.viewingAreaLabel}.`,
+          now,
+        })
+      );
+    }
+
+    return { status: 'paid', booking, type: 'event-ticket' };
   }
 
   return { status: 'error', error: 'unknown_type' };

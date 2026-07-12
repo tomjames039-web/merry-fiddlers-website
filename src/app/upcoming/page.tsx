@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight,
   Tv, Wine, UtensilsCrossed, Music, Sparkles, Trophy, CalendarDays,
-  ArrowUpRight, MapPinned,
+  ArrowUpRight, MapPinned, Ticket,
 } from 'lucide-react';
 import Header from '@/components/Header';
 import SocialFeed from '@/components/SocialFeed';
@@ -49,6 +49,15 @@ interface EnglandFixture {
 
 function tracksEngland(item: WhatsOnItem): boolean {
   return item.trackTeam === 'england' || /england/i.test(item.title);
+}
+
+function isInternal(url?: string): boolean {
+  return !!url && url.startsWith('/');
+}
+
+/** A paid, on-site ticketed event (links to a /events/… page). */
+function isTicketEvent(item: WhatsOnItem): boolean {
+  return !!item.ctaUrl && item.ctaUrl.startsWith('/events/');
 }
 
 function fmtFixtureDate(iso: string): string {
@@ -189,7 +198,7 @@ export default function WhatsOnPage() {
                 .map((i) => {
                   const Icon = categoryIcons[i.category];
                   const live =
-                    tracksEngland(i) && fixture?.kickoffISO
+                    tracksEngland(i) && !isTicketEvent(i) && fixture?.kickoffISO
                       ? `vs ${fixture.opponent}, ${fmtFixtureDate(fixture.kickoffISO)}`
                       : i.subtitle;
                   return (
@@ -251,15 +260,33 @@ export default function WhatsOnPage() {
                       </p>
                     )}
                     <div className="flex flex-wrap gap-3">
-                      <a
-                        href={feature.ctaUrl || BOOK_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-[#c9a55c] hover:bg-[#b8944b] text-[#1d3a3a] rounded-lg font-semibold transition-colors"
-                      >
-                        {feature.ctaLabel || 'Book a table'}
-                        <ChevronRight className="w-4 h-4" />
-                      </a>
+                      {isTicketEvent(feature) ? (
+                        <Link
+                          href={feature.ctaUrl as string}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-[#c9a55c] hover:bg-[#b8944b] text-[#1d3a3a] rounded-lg font-semibold transition-colors"
+                        >
+                          <Ticket className="w-4 h-4" />
+                          {feature.ctaLabel || 'Buy Tickets'}
+                        </Link>
+                      ) : isInternal(feature.ctaUrl) ? (
+                        <Link
+                          href={feature.ctaUrl as string}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-[#c9a55c] hover:bg-[#b8944b] text-[#1d3a3a] rounded-lg font-semibold transition-colors"
+                        >
+                          {feature.ctaLabel || 'Learn more'}
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      ) : (
+                        <a
+                          href={feature.ctaUrl || BOOK_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-[#c9a55c] hover:bg-[#b8944b] text-[#1d3a3a] rounded-lg font-semibold transition-colors"
+                        >
+                          {feature.ctaLabel || 'Book a table'}
+                          <ChevronRight className="w-4 h-4" />
+                        </a>
+                      )}
                       {feature.facebookEventUrl && (
                         <a
                           href={feature.facebookEventUrl}
@@ -292,7 +319,7 @@ export default function WhatsOnPage() {
                   <SportCard
                     key={ev.id}
                     item={ev}
-                    fixture={tracksEngland(ev) ? fixture : null}
+                    fixture={tracksEngland(ev) && !isTicketEvent(ev) ? fixture : null}
                   />
                 ))}
               </div>
@@ -504,15 +531,31 @@ function SportCard({
             <Clock className="w-4 h-4 text-[#c9a55c]" /> {item.schedule}
           </p>
         )}
-        <div className="flex flex-wrap gap-3 mt-4">
-          <a
-            href={item.ctaUrl || BOOK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-[#2d4a4a] hover:text-[#c9a55c] transition-colors"
-          >
-            {item.ctaLabel || 'Book a table'} <ChevronRight className="w-4 h-4" />
-          </a>
+        <div className="flex flex-wrap items-center gap-3 mt-4">
+          {isTicketEvent(item) ? (
+            <Link
+              href={item.ctaUrl as string}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#c9a55c] hover:bg-[#b8944b] text-[#1d3a3a] rounded-lg text-sm font-bold transition-colors"
+            >
+              <Ticket className="w-4 h-4" /> {item.ctaLabel || 'Buy Tickets'}
+            </Link>
+          ) : isInternal(item.ctaUrl) ? (
+            <Link
+              href={item.ctaUrl as string}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#2d4a4a] hover:text-[#c9a55c] transition-colors"
+            >
+              {item.ctaLabel || 'Learn more'} <ChevronRight className="w-4 h-4" />
+            </Link>
+          ) : (
+            <a
+              href={item.ctaUrl || BOOK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#2d4a4a] hover:text-[#c9a55c] transition-colors"
+            >
+              {item.ctaLabel || 'Book a table'} <ChevronRight className="w-4 h-4" />
+            </a>
+          )}
           {item.facebookEventUrl && (
             <a
               href={item.facebookEventUrl}

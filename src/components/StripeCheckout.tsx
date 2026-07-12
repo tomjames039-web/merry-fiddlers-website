@@ -18,12 +18,15 @@ interface StripeCheckoutProps {
   payload: Record<string, unknown>;
   title: string;
   onClose: () => void;
+  /** API endpoint that creates the checkout session. Defaults to /api/checkout. */
+  endpoint?: string;
 }
 
 export default function StripeCheckout({
   payload,
   title,
   onClose,
+  endpoint = '/api/checkout',
 }: StripeCheckoutProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -36,7 +39,7 @@ export default function StripeCheckout({
         return;
       }
       try {
-        const res = await fetch('/api/checkout', {
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -56,7 +59,7 @@ export default function StripeCheckout({
     return () => {
       active = false;
     };
-  }, [payload]);
+  }, [payload, endpoint]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

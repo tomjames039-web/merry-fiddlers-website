@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import QRCode from 'qrcode';
+import type { TicketEvent, TicketBooking } from './tickets';
 
 // Lazy initialize Resend to avoid build-time errors
 function getResendClient() {
@@ -31,6 +33,7 @@ async function sendEmailResilient(opts: {
   html: string;
   replyTo?: string;
   label?: string;
+  attachments?: Array<{ filename: string; content: Buffer | string }>;
 }): Promise<
   | { success: true; data: unknown; from: string }
   | { success: false; reason: 'no_api_key' }
@@ -56,6 +59,7 @@ async function sendEmailResilient(opts: {
         replyTo: opts.replyTo,
         subject: opts.subject,
         html: opts.html,
+        attachments: opts.attachments,
       });
 
       if (error) {
@@ -606,6 +610,158 @@ export async function sendGiftVoucherEmail(details: {
   });
 
   return { ...result, voucherCode };
+}
+
+// ---------------------------------------------------------------------------
+// Event ticket confirmation (England v Argentina)
+// ---------------------------------------------------------------------------
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getEventTicketHTML(details: {
+  event: TicketEvent;
+  booking: TicketBooking;
+  menuUrl: string;
+}): string {
+  const { event, booking } = details;
+  const attendees = booking.attendees
+    .map(
+      (name, i) =>
+        `<tr><td style="padding:6px 0;color:#7a8a8a;width:34px;">${i + 1}.</td><td style="padding:6px 0;color:#2d4a4a;font-weight:bold;">${esc(name)}</td></tr>`
+    )
+    .join('');
+
+  const rules = [
+    'No outside food or drink is permitted, including takeaways and food deliveries.',
+    'Anyone found bringing or consuming outside food or drink may be asked to leave.',
+    'Tickets are non-refundable.',
+    'Each ticket is valid only for the named attendee.',
+    'Seating and viewing-area requests are not guaranteed.',
+    'Please follow staff instructions during the event.',
+  ]
+    .map(
+      (r) =>
+        `<li style="margin:6px 0;color:#5a3a1a;">${esc(r)}</li>`
+    )
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: Georgia, 'Times New Roman', serif; color:#2d4a4a; line-height:1.6; margin:0; padding:0; background:#eef1ef;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;">
+        <div style="background:linear-gradient(135deg,#1d3a3a 0%,#2d4a4a 100%);color:#fff;padding:40px 30px;text-align:center;">
+          <h1 style="margin:0 0 6px;font-size:30px;font-weight:normal;">The Merry Fiddlers</h1>
+          <p style="margin:0;font-size:15px;color:#c9a55c;letter-spacing:2px;text-transform:uppercase;">England v Argentina · Live on the Big Screen</p>
+        </div>
+
+        <div style="padding:36px 30px;">
+          <h2 style="color:#2d4a4a;margin-top:0;">You're booked in, ${esc(booking.purchaserName)}!</h2>
+          <p style="font-size:16px;">Thank you for booking your tickets for <strong>England v Argentina</strong> at The Merry Fiddlers. We can't wait to welcome you to the garden.</p>
+
+          <div style="background:linear-gradient(135deg,#c9a55c 0%,#b8944b 100%);color:#fff;padding:26px;text-align:center;margin:28px 0;border-radius:12px;">
+            <p style="margin:0 0 6px;text-transform:uppercase;letter-spacing:2px;font-size:12px;opacity:.9;">Your Booking Reference</p>
+            <p style="margin:0;font-family:'Courier New',monospace;font-size:32px;font-weight:bold;letter-spacing:3px;">${esc(booking.ref)}</p>
+            <p style="margin:10px 0 0;font-size:13px;opacity:.9;">Please have this ready when you arrive.</p>
+          </div>
+
+          <div style="background:#f8f6f1;padding:24px;border-radius:8px;margin:24px 0;">
+            <table style="width:100%;border-collapse:collapse;font-size:15px;">
+              <tr><td style="padding:6px 0;color:#7a8a8a;">Lead booker</td><td style="padding:6px 0;color:#2d4a4a;font-weight:bold;text-align:right;">${esc(booking.purchaserName)}</td></tr>
+              <tr><td style="padding:6px 0;color:#7a8a8a;">Total tickets</td><td style="padding:6px 0;color:#2d4a4a;font-weight:bold;text-align:right;">${booking.quantity}</td></tr>
+              <tr><td style="padding:6px 0;color:#7a8a8a;">Amount paid</td><td style="padding:6px 0;color:#2d4a4a;font-weight:bold;text-align:right;">£${booking.amount.toFixed(2)}</td></tr>
+              <tr><td style="padding:6px 0;color:#7a8a8a;">Preferred area</td><td style="padding:6px 0;color:#2d4a4a;font-weight:bold;text-align:right;">${esc(booking.viewingAreaLabel)}</td></tr>
+            </table>
+          </div>
+
+          <h3 style="color:#2d4a4a;margin-bottom:8px;">Who's coming</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:15px;margin-bottom:8px;">${attendees}</table>
+          <p style="font-size:12px;color:#9aa;margin-top:0;">Each ticket is valid only for the named attendee above.</p>
+
+          <div style="background:#2d4a4a;color:#fff;border-radius:10px;padding:22px;margin:24px 0;">
+            <h3 style="margin:0 0 12px;color:#c9a55c;">Match Day</h3>
+            <p style="margin:6px 0;"><strong>${esc(event.dateLabel)}</strong></p>
+            <p style="margin:6px 0;">DJ from <strong>${esc(event.djFrom)}</strong></p>
+            <p style="margin:6px 0;">Kick-off at <strong>${esc(event.kickoff)}</strong></p>
+            <p style="margin:6px 0;">Last food orders at <strong>${esc(event.lastFood)}</strong></p>
+            <p style="margin:14px 0 0;color:#cfe;">${esc(event.venue)}</p>
+          </div>
+          ${
+            booking.bookingNotes
+              ? `<div style="background:#f1ede4;border-left:4px solid #c9a55c;padding:16px 18px;margin:20px 0;border-radius:6px;">
+                   <p style="margin:0 0 4px;font-size:13px;color:#9c7e3f;text-transform:uppercase;letter-spacing:1px;">Your booking note</p>
+                   <p style="margin:0;color:#4a4a4a;font-style:italic;">"${esc(booking.bookingNotes)}"</p>
+                   <p style="margin:8px 0 0;font-size:12px;color:#a99;">We'll do our best, but requests can't be guaranteed.</p>
+                 </div>`
+              : ''
+          }
+
+          <div style="border:2px solid #e6b800;background:#fff9e6;border-radius:10px;padding:20px 22px;margin:26px 0;">
+            <h3 style="margin:0 0 10px;color:#8a6a00;">Important event rules</h3>
+            <ul style="margin:0;padding-left:20px;">${rules}</ul>
+          </div>
+
+          <div style="text-align:center;margin:30px 0;">
+            <a href="${esc(details.menuUrl)}" style="display:inline-block;background:#2d4a4a;color:#fff;padding:14px 34px;text-decoration:none;border-radius:8px;font-weight:bold;">View the Food Menu</a>
+            <p style="font-size:12px;color:#9aa;margin-top:10px;">Last food orders 9:30pm · full bar all evening</p>
+          </div>
+
+          <p style="margin-top:26px;">See you in the garden,</p>
+          <p style="color:#c9a55c;font-size:18px;font-weight:bold;margin:4px 0;">The Merry Fiddlers Team</p>
+        </div>
+
+        <div style="background:#f8f6f1;padding:26px;text-align:center;font-size:12px;color:#888;">
+          <p style="margin:4px 0;"><strong>The Merry Fiddlers</strong></p>
+          <p style="margin:4px 0;">4 Fiddlers Hamlet, Epping CM16 7PY · +44 1992 572142</p>
+          <p style="margin:10px 0 0;color:#aaa;font-size:11px;">Please keep this email safe as proof of purchase.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Sends the England v Argentina ticket confirmation, reusing the branded style
+ * of the afternoon tea email. Attaches a QR code (an opaque check-in token — no
+ * customer data) so staff can scan the party in on the door.
+ */
+export async function sendEventTicketEmail(details: {
+  event: TicketEvent;
+  booking: TicketBooking;
+  siteUrl: string;
+}) {
+  const { event, booking, siteUrl } = details;
+  const base = siteUrl.replace(/\/$/, '');
+  const menuUrl = event.menuUrl.startsWith('http')
+    ? event.menuUrl
+    : `${base}${event.menuUrl.startsWith('/') ? '' : '/'}${event.menuUrl}`;
+  const checkinUrl = `${base}/admin/checkin?token=${encodeURIComponent(booking.token)}`;
+
+  let attachments:
+    | Array<{ filename: string; content: Buffer | string }>
+    | undefined;
+  try {
+    const buf = await QRCode.toBuffer(checkinUrl, { width: 320, margin: 1 });
+    attachments = [{ filename: `ticket-${booking.ref}.png`, content: buf }];
+  } catch (e) {
+    console.error('QR generation failed (email still sent):', e);
+  }
+
+  return sendEmailResilient({
+    from: SENDER_BOOKINGS,
+    to: booking.purchaserEmail,
+    subject: 'Your England v Argentina Tickets — The Merry Fiddlers',
+    html: getEventTicketHTML({ event, booking, menuUrl }),
+    label: 'Event ticket',
+    attachments,
+  });
 }
 
 // Send a notification to the business (e.g. a new sale or enquiry)

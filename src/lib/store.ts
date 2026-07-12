@@ -5,6 +5,17 @@ import {
   type WhatsOnItem,
   sortWhatsOn,
 } from './whatsOn';
+import {
+  type TicketEvent,
+  type TicketBooking,
+  type BookingSource,
+  type PaymentStatus,
+  DEFAULT_ARGENTINA_EVENT,
+  ARGENTINA_EVENT_ID,
+  generateBookingRef,
+  generateBookingToken,
+  isPublicSale,
+} from './tickets';
 
 /**
  * Persistence layer for The Merry Fiddlers.
@@ -296,6 +307,328 @@ export async function unredeemVoucher(
 }
 
 // ---------------------------------------------------------------------------
+// Event ticketing helpers (England v Argentina and future paid events)
+// ---------------------------------------------------------------------------
+
+const EVENTS = 'events';
+const BOOKINGS = 'bookings';
+
+/**
+ * Returns the ticket event config, seeding the curated default on first use so
+ * the public page and the admin dashboard always have real, editable content.
+ */
+export async function getTicketEvent(
+  id: string = ARGENTINA_EVENT_ID
+): Promise<TicketEvent> {
+  const stored = await getRecord<TicketEvent>(EVENTS, id);
+  if (stored) {
+    // Heal any config that predates a field we now rely on.
+    return { ...DEFAULT_ARGENTINA_EVENT, ...stored };
+  }
+  await putRecord(EVENTS, DEFAULT_ARGENTINA_EVENT.id, DEFAULT_ARGENTINA_EVENT);
+  return DEFAULT_ARGENTINA_EVENT;
+}
+
+export async function saveTicketEvent(event: TicketEvent): Promise<void> {
+  await putRecord(EVENTS, event.id, event);
+}
+
+export async function updateTicketEvent(
+  id: string,
+  updates: Partial<TicketEvent>
+): Promise<TicketEvent> {
+  const existing = await getTicketEvent(id);
+  const merged: TicketEvent = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+  await putRecord(EVENTS, id, merged);
+  return merged;
+}
+
+// ---- Bookings ----
+
+export async function saveBooking(booking: TicketBooking): Promise<void> {
+  await putRecord(BOOKINGS, booking.ref, booking);
+}
+
+export async function getAllBookings(): Promise<TicketBooking[]> {
+  const bookings = await listRecords<TicketBooking>(BOOKINGS);
+  return bookings.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+
+export async function getBookings(eventId?: string): Promise<TicketBooking[]> {
+  const all = await getAllBookings();
+  return eventId ? all.filter((b) => b.eventId === eventId) : all;
+}
+
+export async function getBookingByRef(
+  ref: string
+): Promise<TicketBooking | null> {
+  if (!ref) return null;
+  return getRecord<TicketBooking>(BOOKINGS, ref.trim().toUpperCase());
+}
+
+export async function getBookingByToken(
+  token: string
+): Promise<TicketBooking | null> {
+  if (!token) return null;
+  const all = await getAllBookings();
+  return all.find((b) => b.token === token) ?? null;
+}
+
+export async function findBookingBySession(
+  sessionId: string
+): Promise<TicketBooking | null> {
+  if (!sessionId) return null;
+  const all = await getAllBookings();
+  return all.find((b) => b.sessionId === sessionId) ?? null;
+}
+
+export interface Availability {
+  allocation: number;
+  sold: number; // paid tickets
+  held: number; // active (non-expired) pending reservations
+  remaining: number;
+}
+
+/** Whether a pending booking still holds inventory. */
+function holdActive(b: TicketBooking, now: number): boolean {
+  return (
+    b.status === 'pending' &&
+    !!b.heldUntil &&
+    new Date(b.heldUntil).getTime() > now
+  );
+}
+
+/**
+ * Derives availability from the bookings themselves — never a decremented
+ * counter — so it can't drift and reducing the allocation can never invalidate
+ * bookings that already exist.
+ */
+export async function getAvailability(
+  eventId: string = ARGENTINA_EVENT_ID
+): Promise<Availability> {
+  const event = await getTicketEvent(eventId);
+  const bookings = await getBookings(eventId);
+  const now = Date.now();
+  let sold = 0;
+  let held = 0;
+  for (const b of bookings) {
+    // Only PUBLIC (Stripe/website) bookings consume the public allocation.
+    // Manual bookings (SevenRooms, comps, phone, staff) are counted separately.
+    if (!isPublicSale(b)) continue;
+    if (b.status === 'paid') sold += b.quantity;
+    else if (holdActive(b, now)) held += b.quantity;
+  }
+  const remaining = Math.max(0, event.allocation - sold - held);
+  return { allocation: event.allocation, sold, held, remaining };
+}
+
+export async function findBookingByExternalRef(
+  externalRef: string
+): Promise<TicketBooking | null> {
+  if (!externalRef) return null;
+  const all = await getAllBookings();
+  const key = externalRef.trim().toLowerCase();
+  return all.find((b) => (b.externalRef || '').toLowerCase() === key) ?? null;
+}
+
+/**
+ * Creates a confirmed admin booking (SevenRooms, telephone, guest list, staff,
+ * comp, etc.). These never require a Stripe transaction and appear in exactly
+ * the same guest search / Door Mode as website bookings.
+ */
+export async function createManualBooking(input: {
+  eventId?: string;
+  purchaserName: string;
+  purchaserEmail?: string;
+  purchaserPhone?: string;
+  quantity: number;
+  attendees: string[];
+  viewingArea: string;
+  viewingAreaLabel: string;
+  tableRef?: string;
+  bookingNotes?: string;
+  source: BookingSource;
+  paymentStatus: PaymentStatus;
+  externalRef?: string;
+  amount?: number;
+  by?: string;
+}): Promise<TicketBooking> {
+  const eventId = input.eventId || ARGENTINA_EVENT_ID;
+  let ref = generateBookingRef();
+  for (let i = 0; i < 6 && (await getBookingByRef(ref)); i++) {
+    ref = generateBookingRef();
+  }
+  const now = new Date().toISOString();
+  const booking: TicketBooking = {
+    ref,
+    token: generateBookingToken(),
+    eventId,
+    status: input.paymentStatus === 'cancelled' ? 'cancelled' : 'paid',
+    quantity: input.quantity,
+    amount: input.amount ?? 0,
+    purchaserName: input.purchaserName,
+    purchaserEmail: input.purchaserEmail || '',
+    purchaserPhone: input.purchaserPhone || '',
+    attendees: input.attendees,
+    attendeesCheckedIn: input.attendees.map(() => false),
+    viewingArea: input.viewingArea,
+    viewingAreaLabel: input.viewingAreaLabel,
+    tableRef: input.tableRef,
+    bookingNotes: input.bookingNotes,
+    source: input.source,
+    paymentStatus: input.paymentStatus,
+    externalRef: input.externalRef,
+    checkedIn: false,
+    manual: true,
+    history: [
+      {
+        at: now,
+        by: input.by || 'Admin',
+        action: 'created',
+        detail: `Manual ${input.source} booking`,
+      },
+    ],
+    createdAt: now,
+    paidAt: input.paymentStatus === 'paid' ? now : undefined,
+  };
+  await saveBooking(booking);
+  return booking;
+}
+
+export interface ReserveResult {
+  ok: boolean;
+  reason?: 'sold_out' | 'not_on_sale' | 'invalid';
+  booking?: TicketBooking;
+  remaining?: number;
+}
+
+/**
+ * Creates a PENDING booking that temporarily holds inventory, using a
+ * reserve-then-verify pattern to reduce the chance of overselling when several
+ * customers try to buy the final tickets at the same time.
+ *
+ * We write the hold, then re-read every committed booking (paid + active holds)
+ * ordered by creation time and take the cumulative sum. If our booking falls
+ * beyond the allocation line, an earlier reservation won the race, so we cancel
+ * ours and report sold out. Earlier bookings deterministically win.
+ */
+export async function reserveBooking(
+  input: Omit<
+    TicketBooking,
+    'ref' | 'token' | 'status' | 'checkedIn' | 'createdAt' | 'heldUntil'
+  >
+): Promise<ReserveResult> {
+  const event = await getTicketEvent(input.eventId);
+
+  if (event.salesStatus !== 'on-sale') {
+    return { ok: false, reason: 'not_on_sale' };
+  }
+  if (
+    !Number.isInteger(input.quantity) ||
+    input.quantity < 1 ||
+    input.quantity > event.maxPerOrder
+  ) {
+    return { ok: false, reason: 'invalid' };
+  }
+
+  const before = await getAvailability(input.eventId);
+  if (input.quantity > before.remaining) {
+    return { ok: false, reason: 'sold_out', remaining: before.remaining };
+  }
+
+  // Generate a unique reference.
+  let ref = generateBookingRef();
+  for (let i = 0; i < 6 && (await getBookingByRef(ref)); i++) {
+    ref = generateBookingRef();
+  }
+
+  const now = new Date();
+  const booking: TicketBooking = {
+    ...input,
+    ref,
+    token: generateBookingToken(),
+    status: 'pending',
+    checkedIn: false,
+    heldUntil: new Date(
+      now.getTime() + event.holdMinutes * 60_000
+    ).toISOString(),
+    createdAt: now.toISOString(),
+  };
+  await saveBooking(booking);
+
+  // Reserve-then-verify: make sure our hold actually fits within allocation.
+  const all = await getBookings(input.eventId);
+  const nowMs = Date.now();
+  const committed = all
+    .filter((b) => b.status === 'paid' || holdActive(b, nowMs))
+    .sort((a, b) => {
+      const t = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return t !== 0 ? t : a.ref.localeCompare(b.ref);
+    });
+
+  let cumulative = 0;
+  let fits = false;
+  for (const b of committed) {
+    cumulative += b.quantity;
+    if (b.ref === ref) {
+      fits = cumulative <= event.allocation;
+      break;
+    }
+  }
+
+  if (!fits) {
+    // An earlier reservation beat us to the last tickets — release the hold.
+    await deleteRecord(BOOKINGS, ref);
+    const avail = await getAvailability(input.eventId);
+    return { ok: false, reason: 'sold_out', remaining: avail.remaining };
+  }
+
+  return { ok: true, booking, remaining: before.remaining - input.quantity };
+}
+
+/** Marks a reserved booking as paid (idempotent). */
+export async function markBookingPaid(
+  ref: string,
+  patch: { amount?: number; paymentRef?: string; sessionId?: string }
+): Promise<{ booking: TicketBooking; alreadyPaid: boolean } | null> {
+  const booking = await getBookingByRef(ref);
+  if (!booking) return null;
+  if (booking.status === 'paid') {
+    return { booking, alreadyPaid: true };
+  }
+  const updated: TicketBooking = {
+    ...booking,
+    status: 'paid',
+    amount: patch.amount ?? booking.amount,
+    paymentRef: patch.paymentRef ?? booking.paymentRef,
+    sessionId: patch.sessionId ?? booking.sessionId,
+    heldUntil: undefined,
+    paidAt: new Date().toISOString(),
+  };
+  await saveBooking(updated);
+  return { booking: updated, alreadyPaid: false };
+}
+
+export async function updateBooking(
+  ref: string,
+  updates: Partial<TicketBooking>
+): Promise<TicketBooking | null> {
+  const existing = await getBookingByRef(ref);
+  if (!existing) return null;
+  const merged: TicketBooking = { ...existing, ...updates, ref: existing.ref };
+  await saveBooking(merged);
+  return merged;
+}
+
+// ---------------------------------------------------------------------------
 // What's On helpers (no-code events manager)
 // ---------------------------------------------------------------------------
 
@@ -306,9 +639,33 @@ const WHATS_ON = 'whats-on';
  * it is seeded once with the curated defaults so the public page and the admin
  * manager always have real, editable content to work with.
  */
+const WHATS_ON_META = 'whats-on-meta';
+
+/**
+ * One-time injection of the England v Argentina ticket promo into stores that
+ * were seeded before it existed (i.e. production). It is added exactly once —
+ * if staff later hide or delete it, the flag stops it coming back.
+ */
+async function ensureArgentinaWhatsOn(
+  items: WhatsOnItem[]
+): Promise<WhatsOnItem[]> {
+  const id = 'england-v-argentina';
+  if (items.some((i) => i.id === id)) return items;
+  const flag = await getRecord<{ done: boolean }>(WHATS_ON_META, 'arg-injected');
+  if (flag?.done) return items;
+  const seed = DEFAULT_WHATS_ON.find((i) => i.id === id);
+  if (!seed) return items;
+  await putRecord(WHATS_ON, seed.id, seed);
+  await putRecord(WHATS_ON_META, 'arg-injected', { done: true });
+  return [...items, seed];
+}
+
 export async function getWhatsOnItems(): Promise<WhatsOnItem[]> {
   const stored = await listRecords<WhatsOnItem>(WHATS_ON);
-  if (stored.length > 0) return sortWhatsOn(stored);
+  if (stored.length > 0) {
+    const healed = await ensureArgentinaWhatsOn(stored);
+    return sortWhatsOn(healed);
+  }
   // First run — persist the defaults so future edits are stable.
   await Promise.all(
     DEFAULT_WHATS_ON.map((item) => putRecord(WHATS_ON, item.id, item))

@@ -6,9 +6,10 @@ import {
   Users, Mail, Phone, ChevronLeft, RefreshCw, Download, Search,
   Trash2, X, Send, Save, BarChart3, Ticket, Gift,
   Coffee, CheckCircle2, AlertCircle, LogOut, PoundSterling, Clock,
-  ArrowRight, Lock, CalendarDays, RotateCcw, ShieldAlert,
+  ArrowRight, Lock, CalendarDays, RotateCcw, ShieldAlert, Trophy,
 } from 'lucide-react';
 import WhatsOnManager from '@/components/admin/WhatsOnManager';
+import EventDashboard from '@/components/admin/EventDashboard';
 
 type LeadStatus = 'new' | 'contacted' | 'booked' | 'lost';
 
@@ -82,7 +83,7 @@ export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [tab, setTab] = useState<'overview' | 'pipeline' | 'vouchers' | 'whats-on'>('overview');
+  const [tab, setTab] = useState<'overview' | 'pipeline' | 'vouchers' | 'tickets' | 'whats-on'>('overview');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(false);
@@ -351,6 +352,7 @@ export default function AdminPage() {
               { k: 'overview', label: 'Overview', icon: BarChart3 },
               { k: 'pipeline', label: 'Leads', icon: Users },
               { k: 'vouchers', label: 'Vouchers', icon: Ticket },
+              { k: 'tickets', label: 'Event Tickets', icon: Trophy },
               { k: 'whats-on', label: "What's On", icon: CalendarDays },
             ] as const).map(({ k, label, icon: Icon }) => (
               <button
@@ -549,6 +551,9 @@ export default function AdminPage() {
             />
           </div>
         )}
+
+        {/* EVENT TICKETS */}
+        {tab === 'tickets' && token && <EventDashboard token={token} />}
 
         {/* WHAT'S ON */}
         {tab === 'whats-on' && token && <WhatsOnManager token={token} />}
