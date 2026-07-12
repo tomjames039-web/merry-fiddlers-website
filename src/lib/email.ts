@@ -5,6 +5,81 @@ function getResendClient() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
+// ---------------------------------------------------------------------------
+// Senders
+// ---------------------------------------------------------------------------
+// Branded senders (require the domain to be VERIFIED in Resend).
+const SENDER_BOOKINGS = 'The Merry Fiddlers <bookings@themerryfiddlers.co.uk>';
+const SENDER_INFO = 'The Merry Fiddlers <info@themerryfiddlers.co.uk>';
+// Resend's shared sender. Works with any valid API key even when the custom
+// domain is NOT verified. Used as an automatic fallback so business-critical
+// emails (enquiries, brochures, vouchers) are never silently dropped.
+const FALLBACK_SENDER = 'The Merry Fiddlers <onboarding@resend.dev>';
+
+/**
+ * Send an email with an automatic fallback.
+ *
+ * It tries the branded `from` address first. If Resend rejects it (typically
+ * because the domain isn't verified) it retries from `onboarding@resend.dev`,
+ * which always works with a valid API key. This guarantees the business keeps
+ * receiving notifications even if domain verification lapses.
+ */
+async function sendEmailResilient(opts: {
+  from: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+  replyTo?: string;
+  label?: string;
+}): Promise<
+  | { success: true; data: unknown; from: string }
+  | { success: false; reason: 'no_api_key' }
+  | { success: false; error: unknown }
+> {
+  const label = opts.label || 'email';
+
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_your_api_key') {
+    console.log(`⚠️ RESEND_API_KEY not configured - ${label} NOT sent to`, opts.to);
+    return { success: false, reason: 'no_api_key' };
+  }
+
+  const resend = getResendClient();
+  // Try the branded sender first, then the reliable fallback (avoid duplicates).
+  const senders = opts.from === FALLBACK_SENDER ? [opts.from] : [opts.from, FALLBACK_SENDER];
+  let lastError: unknown = null;
+
+  for (const from of senders) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from,
+        to: opts.to,
+        replyTo: opts.replyTo,
+        subject: opts.subject,
+        html: opts.html,
+      });
+
+      if (error) {
+        lastError = error;
+        console.error(`❌ ${label}: send from ${from} failed:`, error);
+        continue; // fall through to the fallback sender
+      }
+
+      if (from !== opts.from) {
+        console.warn(
+          `⚠️ ${label}: branded sender failed, delivered via fallback (${from}). Verify your domain in Resend to send from your own address.`
+        );
+      }
+      console.log(`✅ ${label} sent to`, opts.to, `from ${from}`);
+      return { success: true, data, from };
+    } catch (err) {
+      lastError = err;
+      console.error(`❌ ${label}: exception sending from ${from}:`, err);
+    }
+  }
+
+  return { success: false, error: lastError };
+}
+
 // Generate a unique voucher code
 export function generateVoucherCode(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -317,34 +392,17 @@ export async function sendAfternoonTeaVoucherEmail(details: {
   specialRequests?: string;
   voucherCode?: string;
 }) {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_your_api_key') {
-    console.log('⚠️ RESEND_API_KEY not configured - Email not sent');
-    console.log('📧 Would send Afternoon Tea voucher to:', details.customerEmail);
-    return { success: false, reason: 'no_api_key' };
-  }
-
   const voucherCode = details.voucherCode || generateVoucherCode();
 
-  try {
-    const resend = getResendClient();
-    const { data, error } = await resend.emails.send({
-      from: 'The Merry Fiddlers <bookings@themerryfiddlers.co.uk>',
-      to: details.customerEmail,
-      subject: '🎉 Your Afternoon Tea Voucher - The Merry Fiddlers',
-      html: getAfternoonTeaVoucherHTML({ ...details, voucherCode }),
-    });
+  const result = await sendEmailResilient({
+    from: SENDER_BOOKINGS,
+    to: details.customerEmail,
+    subject: '🎉 Your Afternoon Tea Voucher - The Merry Fiddlers',
+    html: getAfternoonTeaVoucherHTML({ ...details, voucherCode }),
+    label: 'Afternoon Tea voucher',
+  });
 
-    if (error) {
-      console.error('❌ Error sending afternoon tea email:', error);
-      return { success: false, error };
-    }
-
-    console.log('✅ Afternoon Tea voucher email sent to:', details.customerEmail);
-    return { success: true, data, voucherCode };
-  } catch (error) {
-    console.error('❌ Exception sending afternoon tea email:', error);
-    return { success: false, error };
-  }
+  return { ...result, voucherCode };
 }
 
 // Send Brochure Download Email
@@ -355,32 +413,13 @@ export async function sendBrochureEmail(details: {
   expectedGuests?: string;
   preferredDate?: string;
 }) {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_your_api_key') {
-    console.log('⚠️ RESEND_API_KEY not configured - Email not sent');
-    console.log('📧 Would send brochure to:', details.email);
-    return { success: false, reason: 'no_api_key' };
-  }
-
-  try {
-    const resend = getResendClient();
-    const { data, error } = await resend.emails.send({
-      from: 'The Merry Fiddlers <info@themerryfiddlers.co.uk>',
-      to: details.email,
-      subject: 'Your Event Brochure - The Merry Fiddlers',
-      html: getBrochureEmailHTML(details),
-    });
-
-    if (error) {
-      console.error('❌ Error sending brochure email:', error);
-      return { success: false, error };
-    }
-
-    console.log('✅ Brochure email sent to:', details.email);
-    return { success: true, data };
-  } catch (error) {
-    console.error('❌ Exception sending brochure email:', error);
-    return { success: false, error };
-  }
+  return sendEmailResilient({
+    from: SENDER_INFO,
+    to: details.email,
+    subject: 'Your Event Brochure - The Merry Fiddlers',
+    html: getBrochureEmailHTML(details),
+    label: 'Brochure',
+  });
 }
 
 // Generate gift voucher code
@@ -556,34 +595,17 @@ export async function sendGiftVoucherEmail(details: {
   giftMessage?: string;
   voucherCode?: string;
 }) {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_your_api_key') {
-    console.log('⚠️ RESEND_API_KEY not configured - Email not sent');
-    console.log('📧 Would send gift voucher to:', details.recipientEmail);
-    return { success: false, reason: 'no_api_key' };
-  }
-
   const voucherCode = details.voucherCode || generateGiftVoucherCode(details.voucherAmount);
 
-  try {
-    const resend = getResendClient();
-    const { data, error } = await resend.emails.send({
-      from: 'The Merry Fiddlers <bookings@themerryfiddlers.co.uk>',
-      to: details.recipientEmail,
-      subject: `🎁 You've Received a £${details.voucherAmount} Gift Voucher - The Merry Fiddlers`,
-      html: getGiftVoucherHTML({ ...details, voucherCode }),
-    });
+  const result = await sendEmailResilient({
+    from: SENDER_BOOKINGS,
+    to: details.recipientEmail,
+    subject: `🎁 You've Received a £${details.voucherAmount} Gift Voucher - The Merry Fiddlers`,
+    html: getGiftVoucherHTML({ ...details, voucherCode }),
+    label: 'Gift voucher',
+  });
 
-    if (error) {
-      console.error('❌ Error sending gift voucher email:', error);
-      return { success: false, error };
-    }
-
-    console.log('✅ Gift voucher email sent to:', details.recipientEmail);
-    return { success: true, data, voucherCode };
-  } catch (error) {
-    console.error('❌ Exception sending gift voucher email:', error);
-    return { success: false, error };
-  }
+  return { ...result, voucherCode };
 }
 
 // Send a notification to the business (e.g. a new sale or enquiry)
@@ -593,11 +615,6 @@ export async function sendBusinessNotificationEmail(details: {
   rows: { label: string; value: string }[];
   replyTo?: string;
 }) {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_your_api_key') {
-    console.log('⚠️ RESEND_API_KEY not configured - business notification not sent');
-    return { success: false, reason: 'no_api_key' };
-  }
-
   const businessEmail = process.env.BUSINESS_EMAIL || 'info@themerryfiddlers.co.uk';
   const rowsHtml = details.rows
     .map(
@@ -606,34 +623,22 @@ export async function sendBusinessNotificationEmail(details: {
     )
     .join('');
 
-  try {
-    const resend = getResendClient();
-    const { data, error } = await resend.emails.send({
-      from: 'The Merry Fiddlers <bookings@themerryfiddlers.co.uk>',
-      to: businessEmail,
-      replyTo: details.replyTo,
-      subject: details.subject,
-      html: `
-        <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 600px; margin: 0 auto;">
-          <div style="background:#2d4a4a;color:#ffffff;padding:24px;text-align:center;">
-            <h1 style="margin:0;font-size:22px;">${details.heading}</h1>
-          </div>
-          <div style="padding:28px;background:#f8f6f1;">${rowsHtml}</div>
-          <div style="background:#2d4a4a;color:#ffffff;padding:14px;text-align:center;font-size:12px;">
-            The Merry Fiddlers — 4 Fiddlers Hamlet, Epping CM16 7PY
-          </div>
+  return sendEmailResilient({
+    from: SENDER_BOOKINGS,
+    to: businessEmail,
+    replyTo: details.replyTo,
+    subject: details.subject,
+    html: `
+      <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 600px; margin: 0 auto;">
+        <div style="background:#2d4a4a;color:#ffffff;padding:24px;text-align:center;">
+          <h1 style="margin:0;font-size:22px;">${details.heading}</h1>
         </div>
-      `,
-    });
-
-    if (error) {
-      console.error('❌ Error sending business notification:', error);
-      return { success: false, error };
-    }
-    console.log('✅ Business notification sent to:', businessEmail);
-    return { success: true, data };
-  } catch (error) {
-    console.error('❌ Exception sending business notification:', error);
-    return { success: false, error };
-  }
+        <div style="padding:28px;background:#f8f6f1;">${rowsHtml}</div>
+        <div style="background:#2d4a4a;color:#ffffff;padding:14px;text-align:center;font-size:12px;">
+          The Merry Fiddlers — 4 Fiddlers Hamlet, Epping CM16 7PY
+        </div>
+      </div>
+    `,
+    label: 'Business notification',
+  });
 }

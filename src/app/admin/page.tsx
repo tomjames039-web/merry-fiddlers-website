@@ -6,7 +6,7 @@ import {
   Users, Mail, Phone, ChevronLeft, RefreshCw, Download, Search,
   Trash2, X, Send, Save, BarChart3, Ticket, Gift,
   Coffee, CheckCircle2, AlertCircle, LogOut, PoundSterling, Clock,
-  ArrowRight, Lock, CalendarDays,
+  ArrowRight, Lock, CalendarDays, RotateCcw, ShieldAlert,
 } from 'lucide-react';
 import WhatsOnManager from '@/components/admin/WhatsOnManager';
 
@@ -35,6 +35,8 @@ interface Voucher {
   status: 'unredeemed' | 'redeemed';
   createdAt: string;
   redeemedAt?: string;
+  unredeemedAt?: string;
+  unredeemCount?: number;
   purchaserName?: string;
   purchaserEmail?: string;
   recipientName?: string;
@@ -89,6 +91,12 @@ export default function AdminPage() {
   const [search, setSearch] = useState('');
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemMsg, setRedeemMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [voucherSearch, setVoucherSearch] = useState('');
+  // Secure un-redeem (reverse a redemption)
+  const [unredeemTarget, setUnredeemTarget] = useState<Voucher | null>(null);
+  const [unredeemPassword, setUnredeemPassword] = useState('');
+  const [unredeemError, setUnredeemError] = useState('');
+  const [unredeemBusy, setUnredeemBusy] = useState(false);
 
   useEffect(() => {
     const t = localStorage.getItem('mf-admin-token');
@@ -190,6 +198,51 @@ export default function AdminPage() {
     }
   };
 
+  const openUnredeem = (v: Voucher) => {
+    setUnredeemTarget(v);
+    setUnredeemPassword('');
+    setUnredeemError('');
+  };
+
+  const doUnredeem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unredeemTarget) return;
+    if (!unredeemPassword.trim()) {
+      setUnredeemError('Please enter the admin password to confirm.');
+      return;
+    }
+    setUnredeemBusy(true);
+    setUnredeemError('');
+    try {
+      const res = await fetch('/api/vouchers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          code: unredeemTarget.code,
+          action: 'unredeem',
+          confirmPassword: unredeemPassword,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.voucher) {
+        setVouchers((prev) => prev.map((v) => (v.code === data.voucher.code ? data.voucher : v)));
+        setRedeemMsg({ ok: true, text: `${data.voucher.code} restored — it can be used again.` });
+        setUnredeemTarget(null);
+        setUnredeemPassword('');
+      } else if (data.reason === 'bad_password') {
+        setUnredeemError('Incorrect admin password. The voucher was NOT changed.');
+      } else if (data.reason === 'not_redeemed') {
+        setUnredeemError('This voucher is already unredeemed.');
+      } else {
+        setUnredeemError('Could not un-redeem this voucher. Please try again.');
+      }
+    } catch {
+      setUnredeemError('Something went wrong. Please try again.');
+    } finally {
+      setUnredeemBusy(false);
+    }
+  };
+
   const exportCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Source', 'Status', 'Event', 'Guests', 'Date', 'Notes'];
     const rows = leads.map((l) => [
@@ -256,6 +309,14 @@ export default function AdminPage() {
   const unredeemed = vouchers.filter((v) => v.status === 'unredeemed');
   const redeemed = vouchers.filter((v) => v.status === 'redeemed');
   const liability = unredeemed.reduce((s, v) => s + v.amount, 0);
+  const matchesVoucher = (v: Voucher) => {
+    const q = voucherSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [v.code, v.purchaserName, v.recipientName, v.purchaserEmail, v.recipientEmail]
+      .some((f) => (f || '').toLowerCase().includes(q));
+  };
+  const unredeemedFiltered = unredeemed.filter(matchesVoucher);
+  const redeemedFiltered = redeemed.filter(matchesVoucher);
   const newCount = leads.filter((l) => l.status === 'new').length;
 
   return (
@@ -447,18 +508,44 @@ export default function AdminPage() {
               )}
             </div>
 
+            {/* Search */}
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                value={voucherSearch}
+                onChange={(e) => setVoucherSearch(e.target.value)}
+                placeholder="Search by voucher code, name or email…"
+                className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#c9a55c] focus:border-transparent"
+              />
+              {voucherSearch && (
+                <button
+                  onClick={() => setVoucherSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  title="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {voucherSearch && (
+              <p className="-mt-3 text-sm text-gray-500">
+                {unredeemedFiltered.length + redeemedFiltered.length} match{unredeemedFiltered.length + redeemedFiltered.length === 1 ? '' : 'es'} for “{voucherSearch}”
+              </p>
+            )}
+
             {/* Unredeemed */}
             <VoucherSection
               title="Unredeemed"
               tone="amber"
-              vouchers={unredeemed}
+              vouchers={unredeemedFiltered}
               onRedeem={(code) => doRedeem(code)}
             />
             {/* Redeemed */}
             <VoucherSection
               title="Redeemed"
               tone="green"
-              vouchers={redeemed}
+              vouchers={redeemedFiltered}
+              onUnredeem={openUnredeem}
             />
           </div>
         )}
@@ -554,6 +641,82 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Secure un-redeem modal */}
+      {unredeemTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => !unredeemBusy && setUnredeemTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-amber-500 text-white px-6 py-4 flex items-center gap-3">
+              <ShieldAlert className="w-6 h-6 shrink-0" />
+              <div>
+                <h2 className="font-semibold text-lg">Un-redeem Voucher</h2>
+                <p className="text-white/80 text-xs">Security confirmation required</p>
+              </div>
+            </div>
+            <form onSubmit={doUnredeem} className="p-6 space-y-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+                <p className="font-mono font-semibold text-[#2d4a4a] break-all">{unredeemTarget.code}</p>
+                <div className="text-gray-600 mt-1 space-y-0.5">
+                  <p>
+                    {unredeemTarget.type === 'gift-voucher' ? 'Gift Voucher' : 'Afternoon Tea'} · £{unredeemTarget.amount.toFixed(2)}
+                  </p>
+                  {unredeemTarget.purchaserName && <p>From: {unredeemTarget.purchaserName}</p>}
+                  {unredeemTarget.quantity ? (
+                    <p>Guests: {unredeemTarget.quantity}{unredeemTarget.addProsecco ? ' + Prosecco' : ''}</p>
+                  ) : null}
+                  <p>Redeemed {fmtDate(unredeemTarget.redeemedAt)}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600">
+                This will mark the voucher as <strong>unredeemed</strong> so the customer can use it
+                again. For security, please re-enter the admin password to confirm.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admin password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    value={unredeemPassword}
+                    onChange={(e) => setUnredeemPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                    placeholder="Enter admin password"
+                  />
+                </div>
+              </div>
+              {unredeemError && (
+                <p className="flex items-center gap-1.5 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {unredeemError}
+                </p>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setUnredeemTarget(null)}
+                  disabled={unredeemBusy}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={unredeemBusy}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  {unredeemBusy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                  Confirm Un-redeem
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -634,12 +797,13 @@ function LeadCard({ lead, onOpen, onAdvance }: { lead: Lead; onOpen: () => void;
 }
 
 function VoucherSection({
-  title, tone, vouchers, onRedeem,
+  title, tone, vouchers, onRedeem, onUnredeem,
 }: {
   title: string;
   tone: 'amber' | 'green';
   vouchers: Voucher[];
   onRedeem?: (code: string) => void;
+  onUnredeem?: (v: Voucher) => void;
 }) {
   const toneDot = tone === 'amber' ? 'bg-amber-500' : 'bg-green-500';
   return (
@@ -671,6 +835,12 @@ function VoucherSection({
                   <Clock className="w-3 h-3" />
                   {v.status === 'redeemed' ? `Redeemed ${fmtDate(v.redeemedAt)}` : `Sold ${fmtDate(v.createdAt)}`}
                 </p>
+                {v.unredeemCount ? (
+                  <p className="flex items-center gap-1 text-amber-600">
+                    <RotateCcw className="w-3 h-3" />
+                    Reversed {v.unredeemCount}× · last {fmtDate(v.unredeemedAt)}
+                  </p>
+                ) : null}
               </div>
               {onRedeem && (
                 <button
@@ -678,6 +848,14 @@ function VoucherSection({
                   className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 bg-[#2d4a4a] hover:bg-[#1d3a3a] text-white rounded-lg text-sm transition-colors"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Mark Redeemed
+                </button>
+              )}
+              {onUnredeem && (
+                <button
+                  onClick={() => onUnredeem(v)}
+                  className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" /> Un-redeem
                 </button>
               )}
             </div>

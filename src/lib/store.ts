@@ -169,6 +169,9 @@ export interface Voucher {
   status: VoucherStatus;
   createdAt: string;
   redeemedAt?: string;
+  // Audit trail for reversing a redemption (see unredeemVoucher)
+  unredeemedAt?: string;
+  unredeemCount?: number;
   // Customer / recipient
   purchaserName?: string;
   purchaserEmail?: string;
@@ -261,6 +264,32 @@ export async function redeemVoucher(
     ...voucher,
     status: 'redeemed',
     redeemedAt: new Date().toISOString(),
+  };
+  await saveVoucher(updated);
+  return { ok: true, voucher: updated };
+}
+
+/**
+ * Reverses a redemption so the voucher can be used again (e.g. it was scanned
+ * by mistake, or a booking fell through). This is a sensitive action — the API
+ * layer additionally requires the admin password to be re-entered.
+ *
+ * Keeps an audit trail: records when it was reversed and how many times.
+ */
+export async function unredeemVoucher(
+  code: string
+): Promise<{ ok: boolean; reason?: string; voucher?: Voucher }> {
+  const voucher = await getVoucherByCode(code);
+  if (!voucher) return { ok: false, reason: 'not_found' };
+  if (voucher.status === 'unredeemed') {
+    return { ok: false, reason: 'not_redeemed', voucher };
+  }
+  const updated: Voucher = {
+    ...voucher,
+    status: 'unredeemed',
+    redeemedAt: undefined,
+    unredeemedAt: new Date().toISOString(),
+    unredeemCount: (voucher.unredeemCount || 0) + 1,
   };
   await saveVoucher(updated);
   return { ok: true, voucher: updated };

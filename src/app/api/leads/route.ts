@@ -71,10 +71,17 @@ export async function POST(request: NextRequest) {
     const eventLabel =
       eventTypeLabels[lead.eventType ?? ''] || lead.eventType || 'Enquiry';
 
-    // Notify the business
-    sendBusinessNotificationEmail({
-      subject: `New ${eventLabel} Enquiry from ${fullName}`,
-      heading: 'New Website Enquiry',
+    // A brochure request can come from the main download page ("brochure-download")
+    // or from any event landing page ("brochure-<event>"). Treat all of them as
+    // brochure requests so the customer always gets the brochure AND we get notified.
+    const isBrochure = (lead.source || '').startsWith('brochure');
+
+    // Notify the business (awaited so failures surface in the response/logs)
+    await sendBusinessNotificationEmail({
+      subject: isBrochure
+        ? `New Brochure Download — ${eventLabel} from ${fullName}`
+        : `New ${eventLabel} Enquiry from ${fullName}`,
+      heading: isBrochure ? 'New Brochure Download' : 'New Website Enquiry',
       replyTo: lead.email,
       rows: [
         { label: 'Name', value: fullName },
@@ -89,9 +96,9 @@ export async function POST(request: NextRequest) {
       ],
     }).catch((err) => console.error('Business notification error:', err));
 
-    // Send the brochure to the customer
-    if (lead.source === 'brochure-download') {
-      sendBrochureEmail({
+    // Send the brochure to the customer (any brochure source)
+    if (isBrochure) {
+      await sendBrochureEmail({
         fullName,
         email: lead.email,
         eventType: lead.eventType ?? '',
