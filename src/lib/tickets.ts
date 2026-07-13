@@ -41,10 +41,13 @@ export type BookingSource =
 /** The money / reservation status of a booking. */
 export type PaymentStatus =
   | 'paid'
-  | 'existing-reservation'
+  | 'part-paid'
+  | 'not-paid'
   | 'complimentary'
-  | 'pay-on-arrival'
-  | 'cancelled';
+  | 'existing-reservation'
+  | 'pay-on-arrival' // legacy, still accepted
+  | 'unknown'
+  | 'cancelled'; // legacy booking-cancel marker
 
 export const BOOKING_SOURCES: { value: BookingSource; label: string }[] = [
   { value: 'website', label: 'Website' },
@@ -55,20 +58,60 @@ export const BOOKING_SOURCES: { value: BookingSource; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
+// The statuses offered in the admin dropdowns.
 export const PAYMENT_STATUSES: { value: PaymentStatus; label: string }[] = [
   { value: 'paid', label: 'Paid' },
-  { value: 'existing-reservation', label: 'Existing reservation' },
+  { value: 'part-paid', label: 'Part-paid' },
+  { value: 'not-paid', label: 'Not paid' },
   { value: 'complimentary', label: 'Complimentary' },
-  { value: 'pay-on-arrival', label: 'Pay on arrival' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'existing-reservation', label: 'Existing reservation' },
+  { value: 'unknown', label: 'Unknown' },
 ];
+
+// All accepted values (incl. legacy) for validation + labelling.
+const PAYMENT_LABELS: Record<string, string> = {
+  paid: 'Paid',
+  'part-paid': 'Part-paid',
+  'not-paid': 'Not paid',
+  complimentary: 'Complimentary',
+  'existing-reservation': 'Existing reservation',
+  'pay-on-arrival': 'Pay on arrival',
+  unknown: 'Unknown',
+  cancelled: 'Cancelled',
+};
+
+export const PAYMENT_STATUS_VALUES = Object.keys(PAYMENT_LABELS) as PaymentStatus[];
 
 export function sourceLabel(s?: BookingSource): string {
   return BOOKING_SOURCES.find((x) => x.value === s)?.label ?? 'Website';
 }
 
 export function paymentLabel(s?: PaymentStatus): string {
-  return PAYMENT_STATUSES.find((x) => x.value === s)?.label ?? 'Paid';
+  return PAYMENT_LABELS[s ?? ''] ?? 'Unknown';
+}
+
+/** A coloured badge for a payment status (used in Door Mode + guest list). */
+export function paymentBadge(
+  s?: PaymentStatus
+): { label: string; tone: 'ok' | 'warn' | 'danger' | 'muted' } {
+  switch (s) {
+    case 'paid':
+      return { label: 'Paid', tone: 'ok' };
+    case 'existing-reservation':
+      return { label: 'Prepaid', tone: 'ok' };
+    case 'part-paid':
+      return { label: 'Part-paid', tone: 'warn' };
+    case 'not-paid':
+      return { label: 'Not paid', tone: 'danger' };
+    case 'unknown':
+      return { label: 'Payment unknown', tone: 'warn' };
+    case 'complimentary':
+      return { label: 'Complimentary', tone: 'muted' };
+    case 'pay-on-arrival':
+      return { label: 'Pay on arrival', tone: 'warn' };
+    default:
+      return { label: 'Paid', tone: 'ok' };
+  }
 }
 
 /** A seating reference (bench, booth, table) staff can allocate guests to. */
@@ -147,6 +190,12 @@ export interface TicketBooking {
   paymentStatus?: PaymentStatus;
   /** external system reference (e.g. a SevenRooms booking ref) for de-duping imports. */
   externalRef?: string;
+  /** arrival / reservation time, e.g. "5:45pm" (offline bookings). */
+  arrivalTime?: string;
+  /** money tracking for offline / SevenRooms bookings (GBP). */
+  amountPrepaid?: number;
+  amountDue?: number;
+  amountWaived?: number;
   // Check-in
   checkedIn: boolean;
   checkedInCount?: number; // for partial arrivals

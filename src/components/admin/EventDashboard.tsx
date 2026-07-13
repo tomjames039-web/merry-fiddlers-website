@@ -6,12 +6,12 @@ import {
   CheckCircle2, Clock, UserCheck, Pause, Play, ChevronDown,
   AlertTriangle, Phone, Mail, MapPin, MessageSquare,
   RotateCcw, Loader2, Trophy, DoorOpen, UserPlus, Upload, Save,
-  Armchair, Check, Pencil,
+  Armchair, Check, Pencil, Trash2,
 } from 'lucide-react';
 import {
   type TicketEvent, type TicketBooking, type SalesStatus,
   attendeeCheckins, checkedInCountOf, partySizeOf, arrivalState,
-  surnameOf, sourceLabel, paymentLabel, isPublicSale,
+  surnameOf, sourceLabel, paymentLabel, paymentBadge, isPublicSale,
   matchesBookingQuery, BOOKING_SOURCES, PAYMENT_STATUSES,
 } from '@/lib/tickets';
 import ManualBookingModal from './ManualBookingModal';
@@ -97,21 +97,34 @@ export default function EventDashboard({ token }: { token: string }) {
   const bookings = useMemo(() => data?.bookings ?? [], [data]);
 
   const stats = useMemo(() => {
-    let sold = 0, revenue = 0, expected = 0, arrived = 0, partial = 0, manual = 0;
+    let sold = 0, revenue = 0, expected = 0, arrived = 0, partial = 0;
+    let offlineCovers = 0, prepaid = 0, due = 0, compCovers = 0, srCount = 0, srCovers = 0;
     for (const b of bookings) {
       const size = partySizeOf(b);
       const c = checkedInCountOf(b);
       expected += size;
       arrived += c;
       if (c > 0 && c < size) partial += 1;
-      revenue += b.amount;
-      if (isPublicSale(b)) sold += b.quantity; else manual += size;
+      if (isPublicSale(b)) {
+        sold += b.quantity;
+        revenue += b.amount; // Stripe revenue only
+      } else {
+        offlineCovers += size;
+        prepaid += b.amountPrepaid || 0;
+        due += b.amountDue || 0;
+        if (b.paymentStatus === 'complimentary') compCovers += size;
+      }
+      if (b.source === 'sevenrooms') { srCount += 1; srCovers += size; }
     }
+    const reviewGroups = bookings
+      .filter((b) => b.paymentStatus === 'not-paid' || b.paymentStatus === 'unknown')
+      .sort((a, b) => partySizeOf(b) - partySizeOf(a));
     const allocation = event?.allocation ?? 0;
     return {
       allocation, sold, remaining: Math.max(0, allocation - sold),
       revenue, orders: bookings.length, expected, arrived,
-      still: Math.max(0, expected - arrived), partial, manual,
+      still: Math.max(0, expected - arrived), partial,
+      offlineCovers, prepaid, due, compCovers, srCount, srCovers, reviewGroups,
     };
   }, [bookings, event]);
 
@@ -179,6 +192,9 @@ export default function EventDashboard({ token }: { token: string }) {
 
   const updateBookingLocal = (b: TicketBooking) =>
     setData((prev) => prev ? { ...prev, bookings: prev.bookings.map((x) => (x.ref === b.ref ? b : x)) } : prev);
+
+  const removeBookingLocal = (ref: string) =>
+    setData((prev) => prev ? { ...prev, bookings: prev.bookings.filter((x) => x.ref !== ref) } : prev);
 
   const rememberStaff = (v: string) => {
     setStaffName(v);
@@ -256,12 +272,50 @@ export default function EventDashboard({ token }: { token: string }) {
         <Stat label="Allocation" value={String(stats.allocation)} icon={<Ticket className="w-5 h-5 text-[#12292a]" />} tint="bg-[#12292a]/10" />
         <Stat label="Public sold" value={String(stats.sold)} icon={<Users className="w-5 h-5 text-[#c9a55c]" />} tint="bg-[#c9a55c]/10" />
         <Stat label="Remaining" value={String(stats.remaining)} icon={<Ticket className="w-5 h-5 text-amber-600" />} tint="bg-amber-100" />
-        <Stat label="Revenue" value={`£${stats.revenue.toFixed(2)}`} icon={<PoundSterling className="w-5 h-5 text-green-600" />} tint="bg-green-100" />
+        <Stat label="Stripe revenue" value={`£${stats.revenue.toFixed(2)}`} icon={<PoundSterling className="w-5 h-5 text-green-600" />} tint="bg-green-100" />
         <Stat label="Total expected" value={String(stats.expected)} icon={<Users className="w-5 h-5 text-[#12292a]" />} tint="bg-[#12292a]/10" />
         <Stat label="Checked in" value={String(stats.arrived)} icon={<UserCheck className="w-5 h-5 text-green-600" />} tint="bg-green-100" />
         <Stat label="Still expected" value={String(stats.still)} icon={<Clock className="w-5 h-5 text-amber-600" />} tint="bg-amber-100" />
         <Stat label="Partial groups" value={String(stats.partial)} icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} tint="bg-amber-100" />
       </div>
+
+      {/* SevenRooms / offline summary */}
+      {stats.offlineCovers > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h4 className="font-semibold text-[#12292a] mb-4 flex items-center gap-2">
+            <Ticket className="w-5 h-5 text-[#c9a55c]" /> SevenRooms &amp; offline bookings
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+            <MiniStat label="SevenRooms reservations" value={String(stats.srCount)} />
+            <MiniStat label="SevenRooms covers" value={String(stats.srCovers)} />
+            <MiniStat label="Prepaid" value={`£${stats.prepaid.toFixed(2)}`} tone="green" />
+            <MiniStat label="Due on arrival" value={`£${stats.due.toFixed(2)}`} tone="amber" />
+            <MiniStat label="Complimentary covers" value={String(stats.compCovers)} />
+          </div>
+          {stats.reviewGroups.length > 0 && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-amber-800 mb-2">
+                <AlertTriangle className="w-4 h-4" /> Unpaid / unknown — needs review
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {stats.reviewGroups.map((b) => (
+                  <button
+                    key={b.ref}
+                    onClick={() => { setView('guests'); setFilter('all'); setSearch(b.purchaserName); }}
+                    className="inline-flex items-center gap-1.5 bg-white border border-amber-200 rounded-full px-3 py-1 text-sm hover:border-amber-400 transition-colors"
+                  >
+                    <span className="font-medium text-[#12292a]">{b.purchaserName}</span>
+                    <span className="text-amber-700">{partySizeOf(b)} · {paymentLabel(b.paymentStatus).toLowerCase()}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-gray-400 mt-3">
+            Offline bookings are excluded from Stripe sales revenue but included in total expected, Door Mode, search, seating and check-in.
+          </p>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -364,7 +418,7 @@ export default function EventDashboard({ token }: { token: string }) {
                 {filtered.map((b) => (
                   <BookingRow key={b.ref} booking={b} event={event} staffName={staffName} authHeaders={authHeaders}
                     open={expanded === b.ref} onToggle={() => setExpanded(expanded === b.ref ? null : b.ref)}
-                    onUpdate={updateBookingLocal} />
+                    onUpdate={updateBookingLocal} onDelete={removeBookingLocal} />
                 ))}
               </div>
             )}
@@ -398,8 +452,30 @@ function Stat({ label, value, icon, tint }: { label: string; value: string; icon
   );
 }
 
+function MiniStat({ label, value, tone }: { label: string; value: string; tone?: 'green' | 'amber' }) {
+  const cls = tone === 'green' ? 'text-green-600' : tone === 'amber' ? 'text-amber-600' : 'text-[#12292a]';
+  return (
+    <div className="bg-gray-50 rounded-lg p-3 text-center">
+      <div className={`text-lg font-bold ${cls}`}>{value}</div>
+      <div className="text-[11px] uppercase tracking-wide text-gray-400 leading-tight mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+const BADGE_TONES: Record<string, string> = {
+  ok: 'bg-green-100 text-green-700',
+  warn: 'bg-amber-100 text-amber-700',
+  danger: 'bg-red-100 text-red-700',
+  muted: 'bg-gray-100 text-gray-600',
+};
+
+function PaymentPill({ status }: { status?: TicketBooking['paymentStatus'] }) {
+  const b = paymentBadge(status);
+  return <span className={`text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${BADGE_TONES[b.tone]}`}>{b.label}</span>;
+}
+
 function BookingRow({
-  booking, event, staffName, authHeaders, open, onToggle, onUpdate,
+  booking, event, staffName, authHeaders, open, onToggle, onUpdate, onDelete,
 }: {
   booking: TicketBooking;
   event: TicketEvent;
@@ -408,6 +484,7 @@ function BookingRow({
   open: boolean;
   onToggle: () => void;
   onUpdate: (b: TicketBooking) => void;
+  onDelete: (ref: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [editNames, setEditNames] = useState(false);
@@ -417,8 +494,18 @@ function BookingRow({
   const [source, setSource] = useState(booking.source || 'website');
   const [paymentStatus, setPaymentStatus] = useState(booking.paymentStatus || 'paid');
   const [note, setNote] = useState(booking.adminNote || '');
+  const [arrivalTime, setArrivalTime] = useState(booking.arrivalTime || '');
+  const [prepaid, setPrepaid] = useState(booking.amountPrepaid != null ? String(booking.amountPrepaid) : '');
+  const [due, setDue] = useState(booking.amountDue != null ? String(booking.amountDue) : '');
+  const [waived, setWaived] = useState(booking.amountWaived != null ? String(booking.amountWaived) : '');
 
-  useEffect(() => { setNames(booking.attendees); setArea(booking.viewingArea); setTableRef(booking.tableRef || ''); }, [booking]);
+  useEffect(() => {
+    setNames(booking.attendees); setArea(booking.viewingArea); setTableRef(booking.tableRef || '');
+    setArrivalTime(booking.arrivalTime || '');
+    setPrepaid(booking.amountPrepaid != null ? String(booking.amountPrepaid) : '');
+    setDue(booking.amountDue != null ? String(booking.amountDue) : '');
+    setWaived(booking.amountWaived != null ? String(booking.amountWaived) : '');
+  }, [booking]);
 
   const checks = attendeeCheckins(booking);
   const size = partySizeOf(booking);
@@ -440,6 +527,20 @@ function BookingRow({
     }
   };
 
+  const del = async () => {
+    if (!confirm(`Delete booking ${booking.ref} for ${booking.purchaserName}? This permanently removes it and cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/tickets?ref=${encodeURIComponent(booking.ref)}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      onDelete(booking.ref);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const tableOptions = event.tables.filter((t) => area === 'no-preference' || t.area === area).map((t) => t.ref);
 
   return (
@@ -451,9 +552,10 @@ function BookingRow({
             {state === 'full' ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full"><UserCheck className="w-3 h-3" /> In</span>
               : state === 'partial' ? <span className="text-[11px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{count}/{size} in</span> : null}
             {!isPublicSale(booking) && <span className="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{sourceLabel(booking.source)}</span>}
+            {!isPublicSale(booking) && <PaymentPill status={booking.paymentStatus} />}
           </div>
           <p className="text-sm text-gray-600 truncate">
-            {booking.purchaserName} · {size} {size === 1 ? 'guest' : 'guests'} · {booking.viewingAreaLabel}{booking.tableRef ? ` · ${booking.tableRef}` : ''}
+            {booking.arrivalTime ? `${booking.arrivalTime} · ` : ''}{booking.purchaserName} · {size} {size === 1 ? 'guest' : 'guests'} · {booking.viewingAreaLabel}{booking.tableRef ? ` · ${booking.tableRef}` : ''}
           </p>
         </div>
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -538,9 +640,36 @@ function BookingRow({
               </select>
             </div>
           </div>
-          <button onClick={() => act({ action: 'update', viewingArea: area, tableRef, source, paymentStatus })} disabled={busy}
+
+          {/* Money + arrival tracking */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Arrival time</label>
+              <input value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="5:45pm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Prepaid (£)</label>
+              <input type="number" min={0} step="0.01" value={prepaid} onChange={(e) => setPrepaid(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Due (£)</label>
+              <input type="number" min={0} step="0.01" value={due} onChange={(e) => setDue(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Waived (£)</label>
+              <input type="number" min={0} step="0.01" value={waived} onChange={(e) => setWaived(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="0" />
+            </div>
+          </div>
+          <button
+            onClick={() => act({
+              action: 'update', viewingArea: area, tableRef, source, paymentStatus, arrivalTime,
+              amountPrepaid: prepaid === '' ? undefined : Number(prepaid),
+              amountDue: due === '' ? undefined : Number(due),
+              amountWaived: waived === '' ? undefined : Number(waived),
+            })}
+            disabled={busy}
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#12292a] text-white rounded-lg text-sm font-medium disabled:opacity-50">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save allocation & details
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save allocation, payment &amp; details
           </button>
 
           {booking.bookingNotes && (
@@ -564,6 +693,14 @@ function BookingRow({
           {booking.checkedInAt && (
             <p className="text-xs text-gray-500">Last check-in {fmtDateTime(booking.checkedInAt)}{booking.checkedInBy ? ` by ${booking.checkedInBy}` : ''}</p>
           )}
+
+          {/* Danger zone */}
+          <div className="pt-3 border-t border-gray-100">
+            <button onClick={del} disabled={busy}
+              className="inline-flex items-center gap-2 px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium disabled:opacity-50">
+              <Trash2 className="w-4 h-4" /> Delete booking
+            </button>
+          </div>
         </div>
       )}
     </div>

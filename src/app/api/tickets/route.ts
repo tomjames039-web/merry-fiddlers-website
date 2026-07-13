@@ -6,6 +6,7 @@ import {
   getBookingByToken,
   updateBooking,
   createManualBooking,
+  deleteBooking,
 } from '@/lib/store';
 import {
   ARGENTINA_EVENT_ID,
@@ -13,7 +14,7 @@ import {
   attendeeCheckins,
   partySizeOf,
   BOOKING_SOURCES,
-  PAYMENT_STATUSES,
+  PAYMENT_STATUS_VALUES,
   type BookingSource,
   type PaymentStatus,
   type TicketBooking,
@@ -83,9 +84,7 @@ export async function POST(request: NextRequest) {
   const source: BookingSource = BOOKING_SOURCES.some((s) => s.value === body.source)
     ? body.source
     : 'other';
-  const paymentStatus: PaymentStatus = PAYMENT_STATUSES.some(
-    (s) => s.value === body.paymentStatus
-  )
+  const paymentStatus: PaymentStatus = PAYMENT_STATUS_VALUES.includes(body.paymentStatus)
     ? body.paymentStatus
     : 'existing-reservation';
 
@@ -94,6 +93,8 @@ export async function POST(request: NextRequest) {
     event.viewingAreas.some((a) => a.id === body.viewingArea)
       ? body.viewingArea
       : 'no-preference';
+
+  const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
 
   const booking = await createManualBooking({
     eventId,
@@ -106,10 +107,15 @@ export async function POST(request: NextRequest) {
     viewingAreaLabel: areaLabel(event, viewingArea),
     tableRef: String(body.tableRef || '').trim() || undefined,
     bookingNotes: String(body.bookingNotes || '').trim().slice(0, 800) || undefined,
+    adminNote: String(body.adminNote || '').trim().slice(0, 1000) || undefined,
     source,
     paymentStatus,
     externalRef: String(body.externalRef || '').trim() || undefined,
-    amount: Number.isFinite(Number(body.amount)) ? Number(body.amount) : 0,
+    arrivalTime: String(body.arrivalTime || '').trim() || undefined,
+    amount: num(body.amount) ?? 0,
+    amountPrepaid: num(body.amountPrepaid),
+    amountDue: num(body.amountDue),
+    amountWaived: num(body.amountWaived),
     by: String(body.by || '').trim() || 'Admin',
   });
 
@@ -241,11 +247,19 @@ export async function PATCH(request: NextRequest) {
       // Source / payment
       if (BOOKING_SOURCES.some((s) => s.value === body.source))
         updates.source = body.source;
-      if (PAYMENT_STATUSES.some((s) => s.value === body.paymentStatus)) {
+      if (PAYMENT_STATUS_VALUES.includes(body.paymentStatus)) {
         updates.paymentStatus = body.paymentStatus;
         if (body.paymentStatus === 'cancelled') updates.status = 'cancelled';
         else if (current.status === 'cancelled') updates.status = 'paid';
       }
+      // Money tracking
+      for (const key of ['amountPrepaid', 'amountDue', 'amountWaived'] as const) {
+        if (body[key] !== undefined && Number.isFinite(Number(body[key]))) {
+          updates[key] = Number(body[key]);
+        }
+      }
+      if (typeof body.arrivalTime === 'string')
+        updates.arrivalTime = body.arrivalTime.trim() || undefined;
       // Notes
       if (typeof body.bookingNotes === 'string')
         updates.bookingNotes = body.bookingNotes.trim().slice(0, 800) || undefined;
@@ -278,4 +292,19 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
   return NextResponse.json({ success: true, booking: updated });
+}
+
+// ---------------------------------------------------------------------------
+// DELETE — admin only: permanently remove a booking (?ref=ARG-XXXXX)
+// ---------------------------------------------------------------------------
+export async function DELETE(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const ref = request.nextUrl.searchParams.get('ref');
+  if (!ref) {
+    return NextResponse.json({ error: 'missing_ref' }, { status: 400 });
+  }
+  await deleteBooking(ref);
+  return NextResponse.json({ success: true });
 }

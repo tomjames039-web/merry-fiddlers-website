@@ -31,6 +31,10 @@ export default function ManualBookingModal({
   const [source, setSource] = useState('sevenrooms');
   const [paymentStatus, setPaymentStatus] = useState('existing-reservation');
   const [externalRef, setExternalRef] = useState('');
+  const [arrivalTime, setArrivalTime] = useState('');
+  const [amountPrepaid, setAmountPrepaid] = useState('');
+  const [amountDue, setAmountDue] = useState('');
+  const [adminNote, setAdminNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -73,9 +77,13 @@ export default function ManualBookingModal({
           viewingArea: area,
           tableRef,
           bookingNotes: notes,
+          adminNote,
           source,
           paymentStatus,
           externalRef,
+          arrivalTime,
+          amountPrepaid: amountPrepaid === '' ? undefined : Number(amountPrepaid),
+          amountDue: amountDue === '' ? undefined : Number(amountDue),
         }),
       });
       const d = await res.json();
@@ -179,14 +187,30 @@ export default function ManualBookingModal({
             </Field>
           </div>
 
+          <div className="grid sm:grid-cols-3 gap-3">
+            <Field label="Arrival time">
+              <input value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} className={inputCls} placeholder="e.g. 5:45pm" />
+            </Field>
+            <Field label="Amount prepaid (£)">
+              <input type="number" min={0} step="0.01" value={amountPrepaid} onChange={(e) => setAmountPrepaid(e.target.value)} className={inputCls} placeholder="0" />
+            </Field>
+            <Field label="Amount due (£)">
+              <input type="number" min={0} step="0.01" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} className={inputCls} placeholder="0" />
+            </Field>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-3">
             <Field label="External ref (e.g. SevenRooms)">
               <input value={externalRef} onChange={(e) => setExternalRef(e.target.value)} className={inputCls} placeholder="Optional" />
             </Field>
-            <Field label="Notes">
+            <Field label="Original note (customer / SevenRooms)">
               <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} placeholder="Optional" />
             </Field>
           </div>
+
+          <Field label="Internal admin note">
+            <input value={adminNote} onChange={(e) => setAdminNote(e.target.value)} className={inputCls} placeholder="Private — staff only" />
+          </Field>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>

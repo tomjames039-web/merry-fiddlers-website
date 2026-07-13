@@ -455,10 +455,15 @@ export async function createManualBooking(input: {
   viewingAreaLabel: string;
   tableRef?: string;
   bookingNotes?: string;
+  adminNote?: string;
   source: BookingSource;
   paymentStatus: PaymentStatus;
   externalRef?: string;
+  arrivalTime?: string;
   amount?: number;
+  amountPrepaid?: number;
+  amountDue?: number;
+  amountWaived?: number;
   by?: string;
 }): Promise<TicketBooking> {
   const eventId = input.eventId || ARGENTINA_EVENT_ID;
@@ -483,9 +488,14 @@ export async function createManualBooking(input: {
     viewingAreaLabel: input.viewingAreaLabel,
     tableRef: input.tableRef,
     bookingNotes: input.bookingNotes,
+    adminNote: input.adminNote,
     source: input.source,
     paymentStatus: input.paymentStatus,
     externalRef: input.externalRef,
+    arrivalTime: input.arrivalTime,
+    amountPrepaid: input.amountPrepaid,
+    amountDue: input.amountDue,
+    amountWaived: input.amountWaived,
     checkedIn: false,
     manual: true,
     history: [
@@ -626,6 +636,11 @@ export async function updateBooking(
   const merged: TicketBooking = { ...existing, ...updates, ref: existing.ref };
   await saveBooking(merged);
   return merged;
+}
+
+/** Permanently removes a booking (admin only). */
+export async function deleteBooking(ref: string): Promise<void> {
+  await deleteRecord(BOOKINGS, ref.trim().toUpperCase());
 }
 
 // ---------------------------------------------------------------------------

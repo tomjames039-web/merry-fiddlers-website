@@ -5,13 +5,14 @@ import Link from 'next/link';
 import {
   Lock, Search, X, RefreshCw, UserCheck, RotateCcw, ChevronLeft,
   ChevronDown, Users, MapPin, Pencil, Save, StickyNote, Loader2,
-  Check, AlertTriangle, Ticket,
+  Check, AlertTriangle, Ticket, UserPlus, Trash2,
 } from 'lucide-react';
 import type { TicketBooking, TicketEvent } from '@/lib/tickets';
+import ManualBookingModal from '@/components/admin/ManualBookingModal';
 import {
   matchesBookingQuery, matchingAttendeeIndexes, attendeeCheckins,
   checkedInCountOf, partySizeOf, arrivalState, surnameOf,
-  sourceLabel, paymentLabel, isPublicSale,
+  sourceLabel, paymentLabel, paymentBadge, isPublicSale,
 } from '@/lib/tickets';
 
 type Filter =
@@ -49,6 +50,7 @@ export default function DoorModePage() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [showAdd, setShowAdd] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +123,19 @@ export default function DoorModePage() {
       if (opts?.refocus !== false) focusSearch();
     },
     [token, staffName, focusSearch]
+  );
+
+  const del = useCallback(
+    async (ref: string) => {
+      if (!token) return;
+      await fetch(`/api/tickets?ref=${encodeURIComponent(ref)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookings((prev) => prev.filter((b) => b.ref !== ref));
+      focusSearch();
+    },
+    [token, focusSearch]
   );
 
   // ---- Derived ----
@@ -202,9 +217,14 @@ export default function DoorModePage() {
             <span className="text-[#c9a55c] font-semibold text-sm" style={{ fontFamily: "'Cinzel', serif" }}>
               Door Mode · England v Argentina
             </span>
-            <button onClick={() => token && load(token)} className="p-1.5 hover:bg-white/10 rounded-lg" title="Refresh">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#c9a55c] text-[#12292a] rounded-lg text-xs font-semibold" title="Add a booking">
+                <UserPlus className="w-4 h-4" /> Add
+              </button>
+              <button onClick={() => token && load(token)} className="p-1.5 hover:bg-white/10 rounded-lg" title="Refresh">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Big search */}
@@ -266,11 +286,20 @@ export default function DoorModePage() {
           </div>
         ) : (
           results.map((b) => (
-            <DoorCard key={b.ref} booking={b} query={query} act={act} focusSearch={focusSearch} event={event} />
+            <DoorCard key={b.ref} booking={b} query={query} act={act} del={del} focusSearch={focusSearch} event={event} />
           ))
         )}
         <div className="h-16" />
       </div>
+
+      {showAdd && event && token && (
+        <ManualBookingModal
+          token={token}
+          event={event}
+          onClose={() => setShowAdd(false)}
+          onCreated={(b) => { setShowAdd(false); setBookings((prev) => [b, ...prev]); focusSearch(); }}
+        />
+      )}
     </div>
   );
 }
@@ -286,11 +315,12 @@ function SummaryChip({ label, value, tone }: { label: string; value: number; ton
 }
 
 function DoorCard({
-  booking, query, act, focusSearch, event,
+  booking, query, act, del, focusSearch, event,
 }: {
   booking: TicketBooking;
   query: string;
   act: (ref: string, patch: Record<string, unknown>, opts?: { refocus?: boolean }) => Promise<void>;
+  del: (ref: string) => Promise<void>;
   focusSearch: () => void;
   event: TicketEvent | null;
 }) {
@@ -348,9 +378,10 @@ function DoorCard({
               {matchIdx.length ? <>Lead: {booking.purchaserName}</> : booking.purchaserName}
             </p>
             <p className="text-white/50 text-sm mt-0.5">
-              {size} {size === 1 ? 'guest' : 'guests'} · {booking.viewingAreaLabel}
+              {booking.arrivalTime ? `${booking.arrivalTime} · ` : ''}{size} {size === 1 ? 'guest' : 'guests'} · {booking.viewingAreaLabel}
               {booking.tableRef ? ` · Table ${booking.tableRef}` : ' · Unallocated'}
             </p>
+            {!isPublicSale(booking) && <PayBadge status={booking.paymentStatus} />}
           </div>
           <div className="text-right shrink-0">
             {stateBadge}
@@ -434,9 +465,18 @@ function DoorCard({
           <div className="grid grid-cols-2 gap-2 text-white/70">
             <Info label="Source" value={sourceLabel(booking.source)} />
             <Info label="Payment" value={paymentLabel(booking.paymentStatus)} />
+            {booking.arrivalTime && <Info label="Arrival" value={booking.arrivalTime} />}
+            {booking.amountPrepaid != null && <Info label="Prepaid" value={`£${booking.amountPrepaid.toFixed(2)}`} />}
+            {!!booking.amountDue && <Info label="Due on arrival" value={`£${booking.amountDue.toFixed(2)}`} />}
             {booking.purchaserPhone && <Info label="Mobile" value={booking.purchaserPhone} href={`tel:${booking.purchaserPhone}`} />}
             {booking.purchaserEmail && <Info label="Email" value={booking.purchaserEmail} />}
           </div>
+          {booking.adminNote && (
+            <div className="rounded-lg bg-white/5 p-3">
+              <p className="text-white/40 text-xs uppercase mb-1">Admin note</p>
+              <p className="text-white/80">{booking.adminNote}</p>
+            </div>
+          )}
 
           {booking.bookingNotes && (
             <div className="rounded-lg bg-white/5 p-3">
@@ -496,9 +536,40 @@ function DoorCard({
             </button>
           </div>
           {booking.doorNote && <p className="text-white/60 text-xs">Saved note: {booking.doorNote}</p>}
+
+          {/* Delete */}
+          <div className="pt-2 border-t border-white/10">
+            <button
+              onClick={async () => {
+                if (!confirm(`Delete booking ${booking.ref} for ${booking.purchaserName}? This permanently removes it and cannot be undone.`)) return;
+                setBusy(true);
+                try { await del(booking.ref); } finally { setBusy(false); }
+              }}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 text-red-300 hover:text-red-200 text-sm disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" /> Delete booking
+            </button>
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+const DOOR_BADGE_TONES: Record<string, string> = {
+  ok: 'bg-green-500/20 text-green-300',
+  warn: 'bg-amber-500/25 text-amber-200',
+  danger: 'bg-red-500/30 text-red-200',
+  muted: 'bg-white/15 text-white/70',
+};
+
+function PayBadge({ status }: { status?: TicketBooking['paymentStatus'] }) {
+  const b = paymentBadge(status);
+  return (
+    <span className={`inline-block mt-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${DOOR_BADGE_TONES[b.tone]}`}>
+      {b.label}
+    </span>
   );
 }
 
