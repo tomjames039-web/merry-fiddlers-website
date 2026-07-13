@@ -575,10 +575,12 @@ export async function reserveBooking(
   await saveBooking(booking);
 
   // Reserve-then-verify: make sure our hold actually fits within allocation.
+  // Only PUBLIC (Stripe/website) bookings count against the public allocation —
+  // offline/SevenRooms bookings are extra and must never block a card sale.
   const all = await getBookings(input.eventId);
   const nowMs = Date.now();
   const committed = all
-    .filter((b) => b.status === 'paid' || holdActive(b, nowMs))
+    .filter((b) => isPublicSale(b) && (b.status === 'paid' || holdActive(b, nowMs)))
     .sort((a, b) => {
       const t = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       return t !== 0 ? t : a.ref.localeCompare(b.ref);
