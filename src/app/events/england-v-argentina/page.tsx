@@ -20,6 +20,11 @@ interface EventResponse {
 
 const NOTES_LIMIT = 500;
 
+// Master switch — the event is completely sold out. This forces the sold-out
+// state instantly (independent of the API) and disables all purchasing.
+// Set back to false to re-enable ticket sales.
+const SOLD_OUT = true;
+
 const highlights = [
   { icon: Music2, text: 'DJ from 6:30pm' },
   { icon: Trophy, text: 'Kick-off at 8:00pm' },
@@ -85,7 +90,7 @@ export default function EnglandArgentinaPage() {
     if (quantity > maxSelectable) setQuantity(maxSelectable);
   }, [maxSelectable, quantity]);
 
-  const bookable = loadState === 'ready' && status === 'on-sale' && remaining > 0;
+  const bookable = !SOLD_OUT && loadState === 'ready' && status === 'on-sale' && remaining > 0;
 
   const emailValid = /.+@.+\..+/.test(purchaser.email.trim());
   const attendeesValid =
@@ -128,6 +133,11 @@ export default function EnglandArgentinaPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f1ea]">
+      {SOLD_OUT && (
+        <div className="sticky top-0 z-[60] bg-red-600 text-white text-center px-3 py-2.5 font-bold text-sm sm:text-base leading-snug shadow-lg">
+          TONIGHT IS COMPLETELY SOLD OUT — NO TICKET, NO ENTRY — PLEASE DO NOT TRAVEL WITHOUT A VALID TICKET
+        </div>
+      )}
       <Header />
 
       <main>
@@ -178,10 +188,28 @@ export default function EnglandArgentinaPage() {
               <div className="flex flex-wrap items-center justify-center gap-3 mb-9">
                 <HeroStat icon={Calendar} label="Wed 15 July 2026" />
                 <HeroStat icon={Clock} label="Kick-off 8:00pm" />
-                <HeroStat icon={Ticket} label="£15 per person" />
+                {!SOLD_OUT && <HeroStat icon={Ticket} label="£15 per person" />}
               </div>
 
-              {loadState === 'loading' ? (
+              {SOLD_OUT ? (
+                <div className="mt-2">
+                  <p
+                    className="text-4xl sm:text-5xl md:text-7xl font-black text-red-400 leading-none"
+                    style={{ fontFamily: "'Cinzel', serif", textShadow: '0 2px 18px rgba(0,0,0,0.7)' }}
+                  >
+                    COMPLETELY SOLD OUT
+                  </p>
+                  <p
+                    className="text-2xl sm:text-3xl md:text-5xl font-black text-white mt-3 tracking-wide"
+                    style={{ textShadow: '0 2px 14px rgba(0,0,0,0.7)' }}
+                  >
+                    NO TICKET — NO ENTRY
+                  </p>
+                  <p className="mt-5 text-base md:text-lg text-white/90 max-w-xl mx-auto">
+                    Please do not travel to the venue without a valid ticket.
+                  </p>
+                </div>
+              ) : loadState === 'loading' ? (
                 <div className="inline-flex items-center gap-2 text-white/70">
                   <Loader2 className="w-5 h-5 animate-spin" /> Loading tickets…
                 </div>
@@ -215,6 +243,7 @@ export default function EnglandArgentinaPage() {
         </section>
 
         {/* ---------------- The night ---------------- */}
+        {!SOLD_OUT && (
         <section className="py-16 lg:py-20 bg-[#12292a] text-white relative overflow-hidden">
           <div
             aria-hidden
@@ -247,8 +276,10 @@ export default function EnglandArgentinaPage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* ---------------- Viewing areas ---------------- */}
+        {!SOLD_OUT && (
         <section className="py-16 lg:py-20">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center mb-10">
@@ -274,12 +305,35 @@ export default function EnglandArgentinaPage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* ---------------- Purchase form / sold out ---------------- */}
-        <section id="ticket-form" className="pb-20">
+        <section id="ticket-form" className="pt-16 pb-20">
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto">
-              {loadState === 'loading' ? (
+              {SOLD_OUT ? (
+                <div className="bg-white rounded-2xl shadow-2xl border-4 border-red-600 overflow-hidden">
+                  <div className="bg-red-600 text-white text-center px-6 py-8">
+                    <p className="text-4xl md:text-6xl font-black leading-none" style={{ fontFamily: "'Cinzel', serif" }}>
+                      COMPLETELY SOLD OUT
+                    </p>
+                    <p className="text-2xl md:text-4xl font-black mt-3 tracking-wide">NO TICKET — NO ENTRY</p>
+                  </div>
+                  <div className="p-6 md:p-8 text-center space-y-4 text-gray-700 text-base md:text-lg">
+                    <p>Tonight&apos;s England v Argentina event is now completely sold out.</p>
+                    <p>
+                      Please do not travel to the venue without a valid ticket. There will be no
+                      tickets available on the door, no additional spaces released and no entry for
+                      unticketed guests.
+                    </p>
+                    <p>Our team cannot take further ticket requests or add names to a waiting list.</p>
+                    <p className="font-bold text-[#12292a] text-lg md:text-xl">
+                      Anyone arriving without a valid ticket will be refused entry.
+                    </p>
+                    <p>Thank you for understanding.</p>
+                  </div>
+                </div>
+              ) : loadState === 'loading' ? (
                 <div className="bg-white rounded-2xl shadow-xl p-12 text-center border border-gray-100">
                   <Loader2 className="w-8 h-8 animate-spin text-[#c9a55c] mx-auto" />
                   <p className="mt-3 text-gray-500">Loading ticket availability…</p>
@@ -546,7 +600,7 @@ export default function EnglandArgentinaPage() {
         </section>
       </main>
 
-      {showCheckout && event && (
+      {!SOLD_OUT && showCheckout && event && (
         <StripeCheckout
           title={`England v Argentina · £${total.toFixed(2)}`}
           endpoint="/api/tickets/checkout"
