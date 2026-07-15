@@ -117,6 +117,11 @@ export async function POST(request: NextRequest) {
     amountDue: num(body.amountDue),
     amountWaived: num(body.amountWaived),
     by: String(body.by || '').trim() || 'Admin',
+    // Restore / advanced options
+    ref: String(body.ref || '').trim().toUpperCase() || undefined,
+    manual: typeof body.manual === 'boolean' ? body.manual : undefined,
+    sessionId: String(body.sessionId || '').trim() || undefined,
+    paymentRef: String(body.paymentRef || '').trim() || undefined,
   });
 
   return NextResponse.json({ success: true, booking });

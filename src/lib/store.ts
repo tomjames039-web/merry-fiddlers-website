@@ -465,11 +465,20 @@ export async function createManualBooking(input: {
   amountDue?: number;
   amountWaived?: number;
   by?: string;
+  /** preserve a specific reference (e.g. restoring a deleted booking). */
+  ref?: string;
+  /** false = counts as a public/Stripe sale against allocation + revenue. */
+  manual?: boolean;
+  sessionId?: string;
+  paymentRef?: string;
 }): Promise<TicketBooking> {
   const eventId = input.eventId || ARGENTINA_EVENT_ID;
-  let ref = generateBookingRef();
-  for (let i = 0; i < 6 && (await getBookingByRef(ref)); i++) {
-    ref = generateBookingRef();
+  let ref = input.ref?.trim().toUpperCase() || generateBookingRef();
+  // Only auto-generate a fresh ref when one wasn't explicitly supplied.
+  if (!input.ref) {
+    for (let i = 0; i < 6 && (await getBookingByRef(ref)); i++) {
+      ref = generateBookingRef();
+    }
   }
   const now = new Date().toISOString();
   const booking: TicketBooking = {
@@ -496,8 +505,10 @@ export async function createManualBooking(input: {
     amountPrepaid: input.amountPrepaid,
     amountDue: input.amountDue,
     amountWaived: input.amountWaived,
+    sessionId: input.sessionId,
+    paymentRef: input.paymentRef,
     checkedIn: false,
-    manual: true,
+    manual: input.manual ?? true,
     history: [
       {
         at: now,
