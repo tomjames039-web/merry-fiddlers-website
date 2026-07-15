@@ -21,6 +21,7 @@ import {
   type BookingHistoryEntry,
 } from '@/lib/tickets';
 import { isAuthorized } from '@/lib/auth';
+import { getStripe } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,8 +51,10 @@ export async function GET(request: NextRequest) {
   const all = await getBookings(eventId);
   // Guest list = every confirmed booking (website + manual), not pending holds.
   const bookings = all.filter((b) => b.status === 'paid');
+  // Cancelled / refunded kept separately for the audit trail.
+  const cancelled = all.filter((b) => b.status === 'cancelled');
 
-  return NextResponse.json({ event, availability, bookings });
+  return NextResponse.json({ event, availability, bookings, cancelled });
 }
 
 // ---------------------------------------------------------------------------
@@ -288,6 +291,47 @@ export async function PATCH(request: NextRequest) {
         history: pushHistory(current, { at: now, by, action: 'door-note' }),
       };
       break;
+    case 'cancel':
+      // Cancel without a card refund (offline bookings / no payment taken).
+      updates = {
+        status: 'cancelled',
+        paymentStatus: current.paymentStatus === 'paid' ? 'cancelled' : current.paymentStatus,
+        history: pushHistory(current, { at: now, by, action: 'cancelled', detail: 'Booking cancelled (no refund)' }),
+      };
+      break;
+    case 'refund': {
+      // Refund the card payment via Stripe, then cancel the booking.
+      if (current.refundedAt) {
+        return NextResponse.json({ success: true, booking: current, alreadyRefunded: true });
+      }
+      if (!current.paymentRef) {
+        return NextResponse.json({ error: 'no_payment_ref' }, { status: 400 });
+      }
+      const stripe = getStripe();
+      if (!stripe) {
+        return NextResponse.json({ error: 'stripe_not_configured' }, { status: 503 });
+      }
+      let refundId: string;
+      try {
+        const refund = await stripe.refunds.create({ payment_intent: current.paymentRef });
+        refundId = refund.id;
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : 'refund_failed';
+        console.error('Stripe refund failed:', detail);
+        return NextResponse.json({ error: 'refund_failed', detail }, { status: 502 });
+      }
+      updates = {
+        status: 'cancelled',
+        paymentStatus: 'refunded',
+        refundedAt: now,
+        refundId,
+        history: pushHistory(current, {
+          at: now, by, action: 'refunded',
+          detail: `£${current.amount.toFixed(2)} refunded via Stripe (${refundId})`,
+        }),
+      };
+      break;
+    }
     default:
       return NextResponse.json({ error: 'invalid_action' }, { status: 400 });
   }

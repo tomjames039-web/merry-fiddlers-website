@@ -22,6 +22,7 @@ interface TicketsResponse {
   event: TicketEvent;
   availability: { allocation: number; sold: number; held: number; remaining: number };
   bookings: TicketBooking[];
+  cancelled?: TicketBooking[];
 }
 
 type Filter =
@@ -95,6 +96,8 @@ export default function EventDashboard({ token }: { token: string }) {
 
   const event = data?.event;
   const bookings = useMemo(() => data?.bookings ?? [], [data]);
+  const cancelled = useMemo(() => data?.cancelled ?? [], [data]);
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const stats = useMemo(() => {
     let sold = 0, revenue = 0, expected = 0, arrived = 0, partial = 0;
@@ -423,6 +426,29 @@ export default function EventDashboard({ token }: { token: string }) {
               </div>
             )}
           </div>
+
+          {/* Cancelled / refunded (audit) */}
+          {cancelled.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <button onClick={() => setShowCancelled((s) => !s)}
+                className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <span className="font-medium text-gray-600">Cancelled / refunded ({cancelled.length})</span>
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showCancelled ? 'rotate-180' : ''}`} />
+              </button>
+              {showCancelled && (
+                <div className="divide-y divide-gray-100">
+                  {cancelled.map((b) => (
+                    <div key={b.ref} className="px-5 py-3 flex items-center gap-3 text-sm">
+                      <span className="font-mono text-gray-500 line-through">{b.ref}</span>
+                      <span className="flex-1 text-gray-600">{b.purchaserName} · {partySizeOf(b)} · £{b.amount.toFixed(2)}</span>
+                      <PaymentPill status={b.paymentStatus} />
+                      {b.refundedAt && <span className="text-xs text-gray-400">refunded {fmtDateTime(b.refundedAt)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -536,6 +562,43 @@ function BookingRow({
         headers: authHeaders(),
       });
       onDelete(booking.ref);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refund = async () => {
+    if (!confirm(`Refund £${booking.amount.toFixed(2)} to ${booking.purchaserName} via Stripe and cancel this booking? The card refund cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ ref: booking.ref, by: staffName, action: 'refund' }),
+      });
+      const d = await res.json();
+      if (d.booking) {
+        onDelete(booking.ref); // leaves the active list (now cancelled/refunded)
+        alert(`Refunded £${booking.amount.toFixed(2)} to ${booking.purchaserName}.${d.booking.refundId ? ` Stripe refund ${d.booking.refundId}.` : ''}`);
+      } else {
+        alert(`Refund failed: ${d.detail || d.error || 'unknown error'}. You can also refund from the Stripe dashboard.`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancel = async () => {
+    if (!confirm(`Cancel booking ${booking.ref} for ${booking.purchaserName}? (No card refund is taken — use "Cancel & refund" for card payments.)`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ ref: booking.ref, by: staffName, action: 'cancel' }),
+      });
+      const d = await res.json();
+      if (d.booking) onDelete(booking.ref);
     } finally {
       setBusy(false);
     }
@@ -694,11 +757,26 @@ function BookingRow({
             <p className="text-xs text-gray-500">Last check-in {fmtDateTime(booking.checkedInAt)}{booking.checkedInBy ? ` by ${booking.checkedInBy}` : ''}</p>
           )}
 
-          {/* Danger zone */}
-          <div className="pt-3 border-t border-gray-100">
+          {/* Cancel / refund / delete */}
+          <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-2">
+            {booking.paymentRef && !booking.refundedAt && (
+              <button onClick={refund} disabled={busy}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PoundSterling className="w-4 h-4" />} Cancel &amp; refund £{booking.amount.toFixed(2)}
+              </button>
+            )}
+            {booking.refundedAt && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm">
+                Refunded {fmtDateTime(booking.refundedAt)}
+              </span>
+            )}
+            <button onClick={cancel} disabled={busy}
+              className="inline-flex items-center gap-2 px-3 py-2 border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-lg text-sm font-medium disabled:opacity-50">
+              Cancel (no refund)
+            </button>
             <button onClick={del} disabled={busy}
               className="inline-flex items-center gap-2 px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium disabled:opacity-50">
-              <Trash2 className="w-4 h-4" /> Delete booking
+              <Trash2 className="w-4 h-4" /> Delete
             </button>
           </div>
         </div>

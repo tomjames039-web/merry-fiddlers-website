@@ -47,6 +47,7 @@ export type PaymentStatus =
   | 'existing-reservation'
   | 'pay-on-arrival' // legacy, still accepted
   | 'unknown'
+  | 'refunded'
   | 'cancelled'; // legacy booking-cancel marker
 
 export const BOOKING_SOURCES: { value: BookingSource; label: string }[] = [
@@ -77,6 +78,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   'existing-reservation': 'Existing reservation',
   'pay-on-arrival': 'Pay on arrival',
   unknown: 'Unknown',
+  refunded: 'Refunded',
   cancelled: 'Cancelled',
 };
 
@@ -109,6 +111,10 @@ export function paymentBadge(
       return { label: 'Complimentary', tone: 'muted' };
     case 'pay-on-arrival':
       return { label: 'Pay on arrival', tone: 'warn' };
+    case 'refunded':
+      return { label: 'Refunded', tone: 'muted' };
+    case 'cancelled':
+      return { label: 'Cancelled', tone: 'danger' };
     default:
       return { label: 'Paid', tone: 'ok' };
   }
@@ -206,6 +212,9 @@ export interface TicketBooking {
   // Internal
   adminNote?: string;
   history?: BookingHistoryEntry[];
+  // Refund tracking
+  refundedAt?: string;
+  refundId?: string;
   // Payment linkage
   sessionId?: string;
   paymentRef?: string;
