@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import {
   getTicketEvent,
-  getAvailability,
+  computeAvailability,
   getBookings,
+  getBookingByRef,
   getBookingByToken,
   updateBooking,
   createManualBooking,
@@ -46,9 +47,12 @@ export async function GET(request: NextRequest) {
   }
 
   const eventId = request.nextUrl.searchParams.get('slug') || ARGENTINA_EVENT_ID;
-  const event = await getTicketEvent(eventId);
-  const availability = await getAvailability(eventId);
-  const all = await getBookings(eventId);
+  // One event read + one bookings read, then derive everything (faster).
+  const [event, all] = await Promise.all([
+    getTicketEvent(eventId),
+    getBookings(eventId),
+  ]);
+  const availability = computeAvailability(event.allocation, all);
   // Guest list = every confirmed booking (website + manual), not pending holds.
   const bookings = all.filter((b) => b.status === 'paid');
   // Cancelled / refunded kept separately for the audit trail.
@@ -173,9 +177,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'missing_ref' }, { status: 400 });
   }
 
-  const current = await getBookings().then((all) =>
-    all.find((b) => b.ref === ref)
-  );
+  // Single-record lookup (fast) instead of listing every booking per action.
+  const current = await getBookingByRef(ref);
   if (!current) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }

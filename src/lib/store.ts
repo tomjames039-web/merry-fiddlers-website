@@ -81,13 +81,15 @@ async function fsGet<T>(collection: string, key: string): Promise<T | null> {
 
 async function fsList<T>(collection: string): Promise<T[]> {
   try {
-    const files = await fs.readdir(fsDir(collection));
-    const out: T[] = [];
-    for (const f of files) {
-      if (!f.endsWith('.json')) continue;
-      const raw = await fs.readFile(path.join(fsDir(collection), f), 'utf8');
-      out.push(JSON.parse(raw) as T);
-    }
+    const files = (await fs.readdir(fsDir(collection))).filter((f) =>
+      f.endsWith('.json')
+    );
+    const out = await Promise.all(
+      files.map(async (f) => {
+        const raw = await fs.readFile(path.join(fsDir(collection), f), 'utf8');
+        return JSON.parse(raw) as T;
+      })
+    );
     return out;
   } catch {
     return [];
@@ -128,12 +130,12 @@ export async function listRecords<T>(collection: string): Promise<T[]> {
   if (await blobsAreUsable()) {
     const store = await getBlobStore(collection);
     const { blobs } = await store.list();
-    const out: T[] = [];
-    for (const b of blobs) {
-      const data = (await store.get(b.key, { type: 'json' })) as T | null;
-      if (data) out.push(data);
-    }
-    return out;
+    // Fetch every record concurrently — sequential reads made the guest list
+    // and Door Mode slow once there were dozens of bookings.
+    const results = (await Promise.all(
+      blobs.map((b) => store.get(b.key, { type: 'json' }))
+    )) as (T | null)[];
+    return results.filter((d): d is T => d != null);
   }
   return fsList<T>(collection);
 }
@@ -411,11 +413,11 @@ function holdActive(b: TicketBooking, now: number): boolean {
  * counter — so it can't drift and reducing the allocation can never invalidate
  * bookings that already exist.
  */
-export async function getAvailability(
-  eventId: string = ARGENTINA_EVENT_ID
-): Promise<Availability> {
-  const event = await getTicketEvent(eventId);
-  const bookings = await getBookings(eventId);
+/** Computes availability from an already-loaded bookings list (no extra reads). */
+export function computeAvailability(
+  allocation: number,
+  bookings: TicketBooking[]
+): Availability {
   const now = Date.now();
   let sold = 0;
   let held = 0;
@@ -426,8 +428,18 @@ export async function getAvailability(
     if (b.status === 'paid') sold += b.quantity;
     else if (holdActive(b, now)) held += b.quantity;
   }
-  const remaining = Math.max(0, event.allocation - sold - held);
-  return { allocation: event.allocation, sold, held, remaining };
+  const remaining = Math.max(0, allocation - sold - held);
+  return { allocation, sold, held, remaining };
+}
+
+export async function getAvailability(
+  eventId: string = ARGENTINA_EVENT_ID
+): Promise<Availability> {
+  const [event, bookings] = await Promise.all([
+    getTicketEvent(eventId),
+    getBookings(eventId),
+  ]);
+  return computeAvailability(event.allocation, bookings);
 }
 
 export async function findBookingByExternalRef(

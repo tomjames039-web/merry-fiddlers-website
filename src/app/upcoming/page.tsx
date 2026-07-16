@@ -112,16 +112,17 @@ export default function WhatsOnPage() {
   const feature =
     screen.find((i) => i.featured) || screen[0] || null;
   const sportCards = screen.filter((i) => !feature || i.id !== feature.id);
-  // Self-healing image: replace earlier placeholder defaults with the real
-  // garden big-screen photo, while respecting any custom image set in admin.
+  // Self-healing image: retire old placeholders (incl. the "it's coming home"
+  // shot) while respecting any custom image set in admin.
   const STALE_FEATURE_IMAGES = new Set([
     '/pub-front-4.jpeg',
     '/football-pitch.jpg',
+    '/big-screen-garden.jpg',
   ]);
   const featureImg =
     feature && feature.imageUrl && !STALE_FEATURE_IMAGES.has(feature.imageUrl)
       ? feature.imageUrl
-      : '/big-screen-garden.jpg';
+      : '/stadium-night.jpg';
 
   return (
     <div className="min-h-screen bg-[#f8f6f1]">
@@ -130,9 +131,9 @@ export default function WhatsOnPage() {
       <main>
         {/* ---------------- Hero ---------------- */}
         <section className="relative pt-20 pb-16 lg:pt-28 lg:pb-24 bg-gradient-to-br from-[#1d3a3a] via-[#2d4a4a] to-[#1d3a3a] text-white overflow-hidden">
-          {/* Real garden big-screen photo behind the hero */}
+          {/* Match-night atmosphere behind the hero */}
           <img
-            src="/big-screen-garden.jpg"
+            src="/stadium-night.jpg"
             alt=""
             aria-hidden
             className="pointer-events-none absolute inset-0 w-full h-full object-cover"

@@ -30,7 +30,7 @@ const businessJsonLd = {
   telephone: "+44 1992 572142",
   priceRange: "££",
   servesCuisine: "British",
-  image: "https://themerryfiddlers.co.uk/big-screen-garden.jpg",
+  image: "https://themerryfiddlers.co.uk/pub-front-1.jpeg",
   address: {
     "@type": "PostalAddress",
     streetAddress: "4 Fiddlers Hamlet",
