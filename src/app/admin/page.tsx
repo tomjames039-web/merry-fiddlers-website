@@ -7,9 +7,11 @@ import {
   Trash2, X, Send, Save, BarChart3, Ticket, Gift,
   Coffee, CheckCircle2, AlertCircle, LogOut, PoundSterling, Clock,
   ArrowRight, Lock, CalendarDays, RotateCcw, ShieldAlert, Trophy,
+  TreePine, PartyPopper,
 } from 'lucide-react';
 import WhatsOnManager from '@/components/admin/WhatsOnManager';
 import EventDashboard from '@/components/admin/EventDashboard';
+import ChristmasDashboard, { isFestiveLead } from '@/components/admin/ChristmasDashboard';
 
 type LeadStatus = 'new' | 'contacted' | 'booked' | 'lost';
 
@@ -68,9 +70,23 @@ const sourceLabels: Record<string, string> = {
   'brochure-festival-venue': 'Brochure · Festival',
   'gift-voucher-purchase': 'Gift Voucher',
   'afternoon-tea-purchase': 'Afternoon Tea',
+  'christmas-day-reservation': 'Christmas Day',
+  'christmas-party-enquiry': 'Christmas Party',
+  'festive-christmas-eve': 'Christmas Eve',
+  'festive-boxing-day': 'Boxing Day',
+  'festive-new-years-eve': "New Year's Eve",
+  'festive-new-years-day': "New Year's Day",
   contact: 'Contact Form',
+  'contact-page': 'Contact Page',
+  homepage: 'Homepage',
   website: 'Website',
 };
+
+/** Pull the guest count out of a festive lead, e.g. "6" or "about 8". */
+function guestCount(l: Lead): number {
+  const m = (l.expectedGuests || '').match(/\d+/);
+  return m ? Number.parseInt(m[0], 10) : 0;
+}
 
 function fmtDate(d?: string) {
   if (!d) return '—';
@@ -83,7 +99,9 @@ export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [tab, setTab] = useState<'overview' | 'pipeline' | 'vouchers' | 'tickets' | 'whats-on'>('overview');
+  const [tab, setTab] = useState<
+    'overview' | 'christmas' | 'pipeline' | 'vouchers' | 'tickets' | 'whats-on'
+  >('overview');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(false);
@@ -246,7 +264,8 @@ export default function AdminPage() {
 
   const exportCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Source', 'Status', 'Event', 'Guests', 'Date', 'Notes'];
-    const rows = leads.map((l) => [
+    // Festive leads have their own, richer export on the Christmas tab.
+    const rows = leads.filter((l) => !isFestiveLead(l.source)).map((l) => [
       l.fullName, l.email, l.phone || '', sourceLabels[l.source] || l.source,
       l.status, l.eventType || '', l.expectedGuests || '', fmtDate(l.createdAt), l.notes || '',
     ]);
@@ -300,12 +319,28 @@ export default function AdminPage() {
   }
 
   // ---------------- Derived data ----------------
-  const filteredLeads = leads.filter((l) =>
+  // Christmas reservations and party enquiries live on their own tab so the
+  // general pipeline stays readable through December.
+  const festiveLeads = leads.filter((l) => isFestiveLead(l.source));
+  const generalLeads = leads.filter((l) => !isFestiveLead(l.source));
+
+  const filteredLeads = generalLeads.filter((l) =>
     !search ||
     l.fullName.toLowerCase().includes(search.toLowerCase()) ||
     l.email.toLowerCase().includes(search.toLowerCase()) ||
     (l.phone || '').includes(search)
   );
+
+  // Christmas headline numbers, mirrored on the Overview tab.
+  const xmasDay = festiveLeads.filter(
+    (l) => l.source === 'christmas-day-reservation' && l.status !== 'lost'
+  );
+  const xmasDayCovers = xmasDay.reduce((s, l) => s + guestCount(l), 0);
+  const xmasParties = festiveLeads.filter(
+    (l) => l.source === 'christmas-party-enquiry' && l.status !== 'lost'
+  );
+  const xmasPartyGuests = xmasParties.reduce((s, l) => s + guestCount(l), 0);
+  const festiveNew = festiveLeads.filter((l) => l.status === 'new').length;
   const revenue = vouchers.reduce((s, v) => s + v.amount, 0);
   const unredeemed = vouchers.filter((v) => v.status === 'unredeemed');
   const redeemed = vouchers.filter((v) => v.status === 'redeemed');
@@ -318,7 +353,7 @@ export default function AdminPage() {
   };
   const unredeemedFiltered = unredeemed.filter(matchesVoucher);
   const redeemedFiltered = redeemed.filter(matchesVoucher);
-  const newCount = leads.filter((l) => l.status === 'new').length;
+  const newCount = generalLeads.filter((l) => l.status === 'new').length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -347,9 +382,10 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
-          <div className="flex gap-1 mt-4 border-t border-white/10 pt-3">
+          <div className="flex gap-1 mt-4 border-t border-white/10 pt-3 overflow-x-auto">
             {([
               { k: 'overview', label: 'Overview', icon: BarChart3 },
+              { k: 'christmas', label: 'Christmas', icon: TreePine },
               { k: 'pipeline', label: 'Leads', icon: Users },
               { k: 'vouchers', label: 'Vouchers', icon: Ticket },
               { k: 'tickets', label: 'Event Tickets', icon: Trophy },
@@ -358,13 +394,22 @@ export default function AdminPage() {
               <button
                 key={k}
                 onClick={() => setTab(k)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm ${
-                  tab === k ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm whitespace-nowrap ${
+                  tab === k
+                    ? k === 'christmas'
+                      ? 'bg-[#8c2f39] text-white'
+                      : 'bg-white/20 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <Icon className="w-4 h-4" /> {label}
+                <Icon className={`w-4 h-4 ${k === 'christmas' && tab !== k ? 'text-[#e6a0a8]' : ''}`} /> {label}
                 {k === 'pipeline' && newCount > 0 && (
                   <span className="ml-1 bg-emerald-500 text-white text-xs px-1.5 rounded-full">{newCount}</span>
+                )}
+                {k === 'christmas' && festiveNew > 0 && (
+                  <span className="ml-1 bg-[#c9a55c] text-[#2d4a4a] text-xs font-bold px-1.5 rounded-full">
+                    {festiveNew}
+                  </span>
                 )}
               </button>
             ))}
@@ -376,20 +421,78 @@ export default function AdminPage() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div className="space-y-6">
+            {/* Christmas summary — the seasonal priority, always at the top */}
+            {festiveLeads.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setTab('christmas')}
+                className="w-full text-left rounded-xl overflow-hidden shadow-sm border border-[#8c2f39]/20 bg-gradient-to-r from-[#8c2f39] to-[#5e1c24] text-[#f8f1e3] hover:shadow-md transition-shadow"
+              >
+                <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-5">
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                      <TreePine className="w-5 h-5 text-[#f0d9b5]" />
+                    </span>
+                    <div>
+                      <p className="font-semibold leading-tight">Christmas 2026</p>
+                      <p className="text-[#f0d9b5]/80 text-sm">
+                        {festiveNew > 0
+                          ? `${festiveNew} new to action`
+                          : 'Everything actioned'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6 sm:gap-8">
+                    <div>
+                      <p className="text-2xl font-bold leading-none">
+                        {xmasDayCovers}
+                        <span className="text-base font-normal text-[#f0d9b5]/60">/100</span>
+                      </p>
+                      <p className="text-[11px] uppercase tracking-wider text-[#f0d9b5]/70 mt-1">
+                        Christmas Day covers
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold leading-none">{xmasParties.length}</p>
+                      <p className="text-[11px] uppercase tracking-wider text-[#f0d9b5]/70 mt-1">
+                        Party enquiries
+                      </p>
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="text-2xl font-bold leading-none">{xmasPartyGuests}</p>
+                      <p className="text-[11px] uppercase tracking-wider text-[#f0d9b5]/70 mt-1">
+                        Party guests
+                      </p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-[#f0d9b5]/70 flex-shrink-0" />
+                  </div>
+                </div>
+                <div className="h-1.5 bg-black/25">
+                  <div
+                    className="h-full bg-[#c9a55c] transition-all"
+                    style={{ width: `${Math.min(100, xmasDayCovers)}%` }}
+                  />
+                </div>
+              </button>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Total Leads" value={String(leads.length)} icon={<Users className="w-6 h-6 text-[#2d4a4a]" />} tint="bg-[#2d4a4a]/10" />
-              <StatCard label="New to Action" value={String(newCount)} icon={<AlertCircle className="w-6 h-6 text-emerald-600" />} tint="bg-emerald-100" />
+              <StatCard label="General Leads" value={String(generalLeads.length)} icon={<Users className="w-6 h-6 text-[#2d4a4a]" />} tint="bg-[#2d4a4a]/10" />
+              <StatCard label="New to Action" value={String(newCount + festiveNew)} icon={<AlertCircle className="w-6 h-6 text-emerald-600" />} tint="bg-emerald-100" />
               <StatCard label="Vouchers Sold" value={String(vouchers.length)} icon={<Ticket className="w-6 h-6 text-[#c9a55c]" />} tint="bg-[#c9a55c]/10" />
               <StatCard label="Total Revenue" value={`£${revenue.toFixed(2)}`} icon={<PoundSterling className="w-6 h-6 text-green-600" />} tint="bg-green-100" />
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-lg font-semibold text-[#2d4a4a] mb-4">Lead Pipeline</h3>
+                <h3 className="text-lg font-semibold text-[#2d4a4a] mb-1">Lead Pipeline</h3>
+                <p className="text-xs text-gray-400 mb-4">
+                  Excludes Christmas — see the Christmas tab
+                </p>
                 <div className="space-y-3">
                   {PIPELINE.map(({ key, label, dot }) => {
-                    const count = leads.filter((l) => l.status === key).length;
-                    const pct = leads.length ? (count / leads.length) * 100 : 0;
+                    const count = generalLeads.filter((l) => l.status === key).length;
+                    const pct = generalLeads.length ? (count / generalLeads.length) * 100 : 0;
                     return (
                       <div key={key} className="flex items-center gap-3">
                         <span className={`w-3 h-3 rounded-full ${dot}`} />
@@ -434,9 +537,36 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* CHRISTMAS */}
+        {tab === 'christmas' && (
+          <ChristmasDashboard
+            leads={festiveLeads}
+            onPatch={(id, updates) => patchLead(id, updates as Partial<Lead>)}
+            onDelete={removeLead}
+          />
+        )}
+
         {/* PIPELINE */}
         {tab === 'pipeline' && (
           <div>
+            <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-gray-500">
+                General enquiries only.
+              </span>
+              {festiveLeads.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTab('christmas')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#8c2f39]/10 text-[#8c2f39] border border-[#8c2f39]/25 font-medium hover:bg-[#8c2f39]/15 transition-colors"
+                >
+                  <PartyPopper className="w-3.5 h-3.5" />
+                  {festiveLeads.length} Christmas{' '}
+                  {festiveLeads.length === 1 ? 'entry' : 'entries'} moved to the
+                  Christmas tab
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <div className="relative mb-5 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input

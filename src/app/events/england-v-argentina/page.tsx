@@ -134,8 +134,17 @@ export default function EnglandArgentinaPage() {
   return (
     <div className="min-h-screen bg-[#f4f1ea]">
       {SOLD_OUT && (
-        <div className="sticky top-0 z-[60] bg-red-600 text-white text-center px-3 py-2.5 font-bold text-sm sm:text-base leading-snug shadow-lg">
-          TONIGHT IS COMPLETELY SOLD OUT — NO TICKET, NO ENTRY — PLEASE DO NOT TRAVEL WITHOUT A VALID TICKET
+        <div className="bg-[#2d4a4a] text-white text-center px-4 py-3 text-sm sm:text-base leading-snug shadow-lg">
+          <span className="font-semibold">This event has finished.</span>{' '}
+          England v Argentina took place on Wednesday 15 July 2026 and sold out.{' '}
+          <Link href="/upcoming" className="underline hover:text-[#c9a55c]">
+            See what&apos;s on now
+          </Link>{' '}
+          or{' '}
+          <Link href="/christmas" className="underline hover:text-[#c9a55c]">
+            plan your Christmas
+          </Link>
+          .
         </div>
       )}
       <Header />
@@ -194,20 +203,30 @@ export default function EnglandArgentinaPage() {
               {SOLD_OUT ? (
                 <div className="mt-2">
                   <p
-                    className="text-4xl sm:text-5xl md:text-7xl font-black text-red-400 leading-none"
-                    style={{ fontFamily: "'Cinzel', serif", textShadow: '0 2px 18px rgba(0,0,0,0.7)' }}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2 text-xs sm:text-sm uppercase tracking-[0.2em] text-white/85"
                   >
-                    COMPLETELY SOLD OUT
+                    Past event · Sold out
                   </p>
-                  <p
-                    className="text-2xl sm:text-3xl md:text-5xl font-black text-white mt-3 tracking-wide"
-                    style={{ textShadow: '0 2px 14px rgba(0,0,0,0.7)' }}
-                  >
-                    NO TICKET — NO ENTRY
+                  <p className="mt-6 text-base md:text-lg text-white/85 max-w-xl mx-auto">
+                    Thank you to everyone who came — the garden was full and it
+                    was a brilliant night. This page is kept for reference only.
                   </p>
-                  <p className="mt-5 text-base md:text-lg text-white/90 max-w-xl mx-auto">
-                    Please do not travel to the venue without a valid ticket.
-                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center mt-7">
+                    <Link
+                      href="/upcoming"
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#c9a55c] hover:bg-[#b8944b] text-[#12292a] rounded-full text-sm font-semibold transition-colors"
+                      style={{ fontFamily: "'Cinzel', serif" }}
+                    >
+                      What&apos;s On Now
+                    </Link>
+                    <Link
+                      href="/christmas"
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/30 hover:bg-white/10 rounded-full text-sm font-semibold transition-colors"
+                      style={{ fontFamily: "'Cinzel', serif" }}
+                    >
+                      Christmas 2026
+                    </Link>
+                  </div>
                 </div>
               ) : loadState === 'loading' ? (
                 <div className="inline-flex items-center gap-2 text-white/70">
@@ -312,25 +331,40 @@ export default function EnglandArgentinaPage() {
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto">
               {SOLD_OUT ? (
-                <div className="bg-white rounded-2xl shadow-2xl border-4 border-red-600 overflow-hidden">
-                  <div className="bg-red-600 text-white text-center px-6 py-8">
-                    <p className="text-4xl md:text-6xl font-black leading-none" style={{ fontFamily: "'Cinzel', serif" }}>
-                      COMPLETELY SOLD OUT
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-[#2d4a4a] text-white text-center px-6 py-8">
+                    <p className="text-2xl md:text-3xl" style={{ fontFamily: "'Cinzel', serif" }}>
+                      This event has finished
                     </p>
-                    <p className="text-2xl md:text-4xl font-black mt-3 tracking-wide">NO TICKET — NO ENTRY</p>
+                    <p className="text-white/70 mt-2">Wednesday 15 July 2026 · Sold out</p>
                   </div>
-                  <div className="p-6 md:p-8 text-center space-y-4 text-gray-700 text-base md:text-lg">
-                    <p>Tonight&apos;s England v Argentina event is now completely sold out.</p>
+                  <div className="p-7 md:p-9 text-center space-y-4 text-gray-700">
                     <p>
-                      Please do not travel to the venue without a valid ticket. There will be no
-                      tickets available on the door, no additional spaces released and no entry for
-                      unticketed guests.
+                      England v Argentina on the big screen has now taken place.
+                      Ticket sales are closed and this page is kept online for
+                      reference only.
                     </p>
-                    <p>Our team cannot take further ticket requests or add names to a waiting list.</p>
-                    <p className="font-bold text-[#12292a] text-lg md:text-xl">
-                      Anyone arriving without a valid ticket will be refused entry.
+                    <p>
+                      We are open Wednesday to Sunday with fires lit, Sunday
+                      roasts, private dining in the heated domes and the full
+                      Christmas diary now live.
                     </p>
-                    <p>Thank you for understanding.</p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                      <Link
+                        href="/christmas"
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#8c2f39] hover:bg-[#a03744] text-[#f8f1e3] rounded-lg text-sm uppercase tracking-[0.14em] font-semibold transition-colors"
+                        style={{ fontFamily: "'Cinzel', serif" }}
+                      >
+                        Christmas 2026
+                      </Link>
+                      <Link
+                        href="/upcoming"
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border-2 border-[#2d4a4a] text-[#2d4a4a] hover:bg-[#2d4a4a] hover:text-white rounded-lg text-sm uppercase tracking-[0.14em] font-semibold transition-colors"
+                        style={{ fontFamily: "'Cinzel', serif" }}
+                      >
+                        What&apos;s On
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ) : loadState === 'loading' ? (

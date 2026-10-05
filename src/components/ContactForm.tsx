@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CheckCircle2, AlertCircle, Send } from 'lucide-react';
+import { trackLead } from '@/lib/analytics';
 
 interface ContactFormProps {
   /** Show the "enquiry type" dropdown (used on the dedicated Contact page). */
@@ -56,6 +57,9 @@ export default function ContactForm({
         }),
       });
       if (!res.ok) throw new Error('Request failed');
+      trackLead(source, {
+        enquiry_type: (withEnquiryType ? form.eventType : '') || defaultEventType,
+      });
       setStatus('success');
       setForm({ name: '', phone: '', email: '', eventType: '', message: '' });
     } catch {

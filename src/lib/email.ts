@@ -798,3 +798,110 @@ export async function sendBusinessNotificationEmail(details: {
     label: 'Business notification',
   });
 }
+
+// ---------------------------------------------------------------------------
+// Festive enquiries & Christmas Day reservations
+// ---------------------------------------------------------------------------
+
+function getFestiveConfirmationHTML(details: {
+  firstName: string;
+  heading: string;
+  dateLine: string;
+  intro: string;
+  summaryRows: { label: string; value: string }[];
+  whatHappensNext: string[];
+  siteUrl: string;
+  ctaLabel: string;
+  ctaPath: string;
+}): string {
+  const rows = details.summaryRows
+    .filter((r) => r.value)
+    .map(
+      (r) =>
+        `<tr><td style="padding:7px 0;color:#7a8a8a;">${esc(r.label)}</td><td style="padding:7px 0;color:#2d4a4a;font-weight:bold;text-align:right;">${esc(r.value)}</td></tr>`
+    )
+    .join('');
+
+  const next = details.whatHappensNext
+    .map((s) => `<li style="margin:7px 0;color:#5c5343;">${esc(s)}</li>`)
+    .join('');
+
+  const base = details.siteUrl.replace(/\/$/, '');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: Georgia, 'Times New Roman', serif; color:#2d4a4a; line-height:1.6; margin:0; padding:0; background:#efeae0;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;">
+        <div style="background:linear-gradient(135deg,#3c1418 0%,#1d3a3a 100%);color:#fff;padding:38px 30px;text-align:center;">
+          <h1 style="margin:0 0 8px;font-size:28px;font-weight:normal;">The Merry Fiddlers</h1>
+          <p style="margin:0;font-size:13px;color:#c9a55c;letter-spacing:3px;text-transform:uppercase;">${esc(details.heading)}</p>
+        </div>
+
+        <div style="padding:34px 30px;">
+          <h2 style="color:#2d4a4a;margin-top:0;font-weight:normal;">Thank you, ${esc(details.firstName)}</h2>
+          <p style="font-size:16px;color:#5c5343;">${esc(details.intro)}</p>
+
+          <div style="background:#8c2f39;color:#f8f1e3;padding:18px 22px;border-radius:10px;margin:24px 0;text-align:center;">
+            <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.85;">Your date</p>
+            <p style="margin:6px 0 0;font-size:20px;font-weight:bold;">${esc(details.dateLine)}</p>
+          </div>
+
+          ${
+            rows
+              ? `<div style="background:#f8f6f1;padding:20px 22px;border-radius:8px;margin:22px 0;">
+                   <table style="width:100%;border-collapse:collapse;font-size:15px;">${rows}</table>
+                 </div>`
+              : ''
+          }
+
+          <h3 style="color:#2d4a4a;margin-bottom:8px;font-weight:normal;">What happens next</h3>
+          <ul style="margin:0 0 22px;padding-left:20px;">${next}</ul>
+
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${esc(base)}${esc(details.ctaPath)}" style="display:inline-block;background:#2d4a4a;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;">${esc(details.ctaLabel)}</a>
+          </div>
+
+          <p style="color:#5c5343;margin-top:26px;">Anything at all, just call us on <strong>01992 572142</strong> — we are happy to talk it through.</p>
+          <p style="color:#c9a55c;font-size:17px;font-weight:bold;margin:12px 0 0;">The Merry Fiddlers Team</p>
+        </div>
+
+        <div style="background:#f8f6f1;padding:24px;text-align:center;font-size:12px;color:#888;">
+          <p style="margin:4px 0;"><strong>The Merry Fiddlers</strong> — Country Pub &amp; Restaurant</p>
+          <p style="margin:4px 0;">4 Fiddlers Hamlet, Epping CM16 7PY · +44 1992 572142</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Customer confirmation for a Christmas Day reservation, Christmas party
+ * enquiry or a festive-date interest registration.
+ */
+export async function sendFestiveConfirmationEmail(details: {
+  to: string;
+  name: string;
+  /** e.g. 'Christmas Day Reservation' */
+  heading: string;
+  subject: string;
+  dateLine: string;
+  intro: string;
+  summaryRows: { label: string; value: string }[];
+  whatHappensNext: string[];
+  siteUrl: string;
+  ctaLabel: string;
+  ctaPath: string;
+}) {
+  const firstName = (details.name || '').trim().split(/\s+/)[0] || 'there';
+
+  return sendEmailResilient({
+    from: SENDER_BOOKINGS,
+    to: details.to,
+    subject: details.subject,
+    html: getFestiveConfirmationHTML({ ...details, firstName }),
+    label: 'Festive confirmation',
+  });
+}

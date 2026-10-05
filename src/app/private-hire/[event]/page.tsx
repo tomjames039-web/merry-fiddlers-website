@@ -253,7 +253,7 @@ export default async function EventPage({
                 {related.map((r) => (
                   <Link
                     key={r.slug}
-                    href={`/private-hire/${r.slug}`}
+                    href={r.canonicalHref ?? `/private-hire/${r.slug}`}
                     className="group flex items-center justify-between gap-3 bg-white border border-gray-200 hover:border-[#c9a55c] rounded-xl p-5 transition-colors"
                   >
                     <span className="font-medium text-[#2d4a4a]">{r.name}</span>

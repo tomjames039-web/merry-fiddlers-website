@@ -7,7 +7,13 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin', '/api/'],
+      disallow: [
+        '/admin',
+        '/api/',
+        '/booking-success',
+        // finished event — kept live for old links, kept out of search
+        '/events/england-v-argentina',
+      ],
     },
     sitemap: `${SITE}/sitemap.xml`,
     host: SITE,

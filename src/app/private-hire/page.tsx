@@ -106,7 +106,7 @@ export default function PrivateHirePage() {
                 return (
                   <Link
                     key={ev.slug}
-                    href={`/private-hire/${ev.slug}`}
+                    href={ev.canonicalHref ?? `/private-hire/${ev.slug}`}
                     className="group bg-[#f8f6f1] rounded-2xl p-7 border border-transparent hover:border-[#c9a55c]/40 hover:shadow-lg transition-all"
                   >
                     <div className="flex items-center justify-between mb-4">

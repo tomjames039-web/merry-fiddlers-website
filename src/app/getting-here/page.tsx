@@ -1,11 +1,36 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight, Train, Bus, Navigation, TreePine, History, Car, ExternalLink, Calendar, Info } from 'lucide-react';
 import Header from '@/components/Header';
+
+const SITE_URL = 'https://themerryfiddlers.co.uk';
+
+export const metadata: Metadata = {
+  title: 'Getting Here | Pub Near Epping Forest | The Merry Fiddlers, Epping',
+  description:
+    'How to find The Merry Fiddlers at 4 Fiddlers Hamlet, Epping CM16 7PY — by car from Epping and the M11, by Central line to Epping station, on-site parking and Epping Forest walks on the doorstep.',
+  keywords: [
+    'pub near Epping Forest',
+    'pub Epping directions',
+    'country pub near me Epping',
+    'Epping station pub',
+  ],
+  alternates: { canonical: `${SITE_URL}/getting-here` },
+  openGraph: {
+    title: 'Getting to The Merry Fiddlers, Epping',
+    description:
+      '4 Fiddlers Hamlet, Epping CM16 7PY — minutes from Epping town and the edge of Epping Forest, with on-site parking.',
+    url: `${SITE_URL}/getting-here`,
+    siteName: 'The Merry Fiddlers',
+    type: 'website',
+  },
+};
 
 const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Menus', href: '/menu' },
   { name: 'Book A Table', href: 'https://www.sevenrooms.com/reservations/themerryfiddlers', external: true },
+  { name: 'Christmas 2026', href: '/christmas' },
   { name: 'Private Hire & Occasions', href: '/private-hire' },
   { name: 'Upcoming', href: '/upcoming' },
   { name: 'Getting Here', href: '/getting-here' },
@@ -17,14 +42,8 @@ export default function GettingHerePage() {
     <div className="min-h-screen">
       <Header />
 
-      {/* Hero Section with Steam Train Image */}
-      <section className="relative h-[500px] bg-gradient-to-b from-[#2d4a4a] to-[#1a2f2f]">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-75"
-          style={{
-            backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/6233_Duchess_of_Sutherland_at_Ais_Gill.jpg/1200px-6233_Duchess_of_Sutherland_at_Ais_Gill.jpg')"
-          }}
-        />
+      {/* Text-only hero: no externally hosted or unverified photography. */}
+      <section className="relative h-[500px] bg-gradient-to-br from-[#2d4a4a] via-[#294747] to-[#1a2f2f]">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="relative container mx-auto px-4 h-full flex flex-col justify-center items-center text-center text-white">
           <div className="flex items-center justify-center gap-2 text-sm text-white/80 mb-4">
@@ -239,13 +258,8 @@ export default function GettingHerePage() {
             Whether you&apos;re arriving by car, train, bus, or on foot, we&apos;re easy to find!
           </p>
 
-          {/* Steam Train Feature Image */}
+          {/* No externally hosted train photo: image rights have not been verified. */}
           <div className="mb-12 rounded-2xl overflow-hidden shadow-2xl">
-            <img
-              src="https://ichef.bbci.co.uk/images/ic/480xn/p0lf7jmk.jpg"
-              alt="Heritage steam train running through the Essex countryside"
-              className="w-full h-[400px] object-cover"
-            />
             <div className="bg-gradient-to-r from-[#2d4a4a] to-[#1a2f2f] text-white p-6 text-center">
               <p className="text-lg font-semibold mb-2" style={{ fontFamily: "'Cinzel', serif" }}>
                 Arrive in Style on the Epping Ongar Heritage Railway

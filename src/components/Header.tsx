@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Menus', href: '/menu' },
   { name: 'Book A Table', href: 'https://www.sevenrooms.com/reservations/themerryfiddlers', external: true },
+  { name: 'Christmas', href: '/christmas', highlight: true },
   { name: 'Private Hire & Occasions', href: '/private-hire' },
   { name: 'Gift Vouchers', href: '/gift-vouchers' },
   { name: "What's On", href: '/upcoming' },
@@ -53,7 +54,7 @@ export default function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-0.5">
               {navigation.map((item) => (
                 item.external ? (
                   <a
@@ -61,16 +62,25 @@ export default function Header() {
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white uppercase tracking-[0.12em] elegant-underline"
+                    className="px-3 py-2 text-[13px] font-medium text-white/90 hover:text-white uppercase tracking-[0.1em] elegant-underline"
                     style={{ fontFamily: "'Cinzel', serif" }}
                   >
                     {item.name}
                   </a>
+                ) : item.highlight ? (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="ml-1 mr-1 px-4 py-2 text-[13px] font-semibold text-[#f8f1e3] bg-[#8c2f39] hover:bg-[#a03744] rounded-full uppercase tracking-[0.1em] transition-colors"
+                    style={{ fontFamily: "'Cinzel', serif" }}
+                  >
+                    {item.name}
+                  </Link>
                 ) : (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white uppercase tracking-[0.12em] elegant-underline"
+                    className="px-3 py-2 text-[13px] font-medium text-white/90 hover:text-white uppercase tracking-[0.1em] elegant-underline"
                     style={{ fontFamily: "'Cinzel', serif" }}
                   >
                     {item.name}
@@ -97,7 +107,7 @@ export default function Header() {
         {/* Mobile Navigation Menu */}
         <div
           className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-            mobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+            mobileMenuOpen ? 'max-h-[640px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
           <nav className="container mx-auto px-4 pb-6 border-t border-white/10">
@@ -120,7 +130,11 @@ export default function Header() {
                     key={item.name}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="px-4 py-3 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg uppercase tracking-[0.12em] transition-colors"
+                    className={
+                      item.highlight
+                        ? 'px-4 py-3 text-sm font-semibold text-[#f8f1e3] bg-[#8c2f39] hover:bg-[#a03744] rounded-lg uppercase tracking-[0.12em] transition-colors'
+                        : 'px-4 py-3 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg uppercase tracking-[0.12em] transition-colors'
+                    }
                     style={{ fontFamily: "'Cinzel', serif" }}
                   >
                     {item.name}

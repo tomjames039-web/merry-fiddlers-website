@@ -1,12 +1,31 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Phone, Clock, MapPin, Mail, Facebook, Instagram, ChevronRight } from 'lucide-react';
 import Header from '@/components/Header';
 import ContactForm from '@/components/ContactForm';
 
+const SITE_URL = 'https://themerryfiddlers.co.uk';
+
+export const metadata: Metadata = {
+  title: 'Contact Us | The Merry Fiddlers, Epping CM16 7PY',
+  description:
+    'Contact The Merry Fiddlers country pub and restaurant in Epping — call 01992 572142, email info@themerryfiddlers.co.uk or send an enquiry. 4 Fiddlers Hamlet, Epping CM16 7PY.',
+  alternates: { canonical: `${SITE_URL}/contact` },
+  openGraph: {
+    title: 'Contact The Merry Fiddlers, Epping',
+    description:
+      'Reservations, private hire and general enquiries — 4 Fiddlers Hamlet, Epping CM16 7PY.',
+    url: `${SITE_URL}/contact`,
+    siteName: 'The Merry Fiddlers',
+    type: 'website',
+  },
+};
+
 const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Menus', href: '/menu' },
   { name: 'Book A Table', href: 'https://www.sevenrooms.com/reservations/themerryfiddlers', external: true },
+  { name: 'Christmas 2026', href: '/christmas' },
   { name: 'Private Hire & Occasions', href: '/private-hire' },
   { name: 'Upcoming', href: '/upcoming' },
   { name: 'Getting Here', href: '/getting-here' },

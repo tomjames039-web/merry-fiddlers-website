@@ -35,6 +35,7 @@ interface FormState {
   badge: string;
   description: string;
   schedule: string;
+  endDate: string;
   instagramUrl: string;
   facebookEventUrl: string;
   trackTeam: string;
@@ -54,6 +55,7 @@ function blankForm(): FormState {
     badge: '',
     description: '',
     schedule: '',
+    endDate: '',
     instagramUrl: '',
     facebookEventUrl: '',
     trackTeam: '',
@@ -74,6 +76,7 @@ function toForm(item: WhatsOnItem): FormState {
     badge: item.badge || '',
     description: item.description || '',
     schedule: item.schedule || '',
+    endDate: item.endDate || '',
     instagramUrl: item.instagramUrl || '',
     facebookEventUrl: item.facebookEventUrl || '',
     trackTeam: item.trackTeam || '',
@@ -534,14 +537,28 @@ export default function WhatsOnManager({ token }: { token: string }) {
                 />
               </Field>
 
-              <Field label="Schedule / when">
-                <input
-                  value={form.schedule}
-                  onChange={(e) => setForm({ ...form, schedule: e.target.value })}
-                  placeholder="e.g. Fridays · 5–9pm"
-                  className={inputClass}
-                />
-              </Field>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Field label="Schedule / when">
+                  <input
+                    value={form.schedule}
+                    onChange={(e) => setForm({ ...form, schedule: e.target.value })}
+                    placeholder="e.g. Fridays · 5–9pm"
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Auto-hide after (optional)">
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                    className={inputClass}
+                  />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    Temporary promos disappear from the website automatically at
+                    the end of this day. Leave blank for permanent items.
+                  </p>
+                </Field>
+              </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field

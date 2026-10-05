@@ -1,159 +1,223 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Clock, Percent, Sparkles, ChevronRight } from 'lucide-react';
+import { X, ChevronRight, Sparkles, Coffee } from 'lucide-react';
 import Link from 'next/link';
 
-interface TimeLeft {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-}
-
-interface Offer {
+/**
+ * Seasonal announcement bar.
+ *
+ * Each campaign has a real start and end date and retires itself — no rolling
+ * "offer ends in 6 days" countdown that resets on every page load. The first
+ * campaign whose window contains today is the one that shows.
+ *
+ * To add or remove a campaign, edit CAMPAIGNS below. To turn the bar off
+ * entirely, set every campaign's `live` to false.
+ */
+interface Campaign {
   id: string;
-  title: string;
-  subtitle: string;
-  discount: string;
-  code?: string;
-  endDate: Date;
+  live: boolean;
+  /** inclusive — YYYY-MM-DD; omit for an evergreen message */
+  from?: string;
+  /** inclusive, hides at the end of this day — YYYY-MM-DD */
+  to?: string;
+  eyebrow: string;
+  headline: string;
+  detail?: string;
   ctaText: string;
   ctaLink: string;
-  bgGradient: string;
-  isActive: boolean;
+  /** tailwind gradient stops */
+  gradient: string;
+  /** text colour class for the CTA pill */
+  pill: string;
+  icon?: 'sparkles' | 'coffee';
+  /** Lower numbers are shown first when several campaigns are active. */
+  priority: number;
 }
 
-// Configure your current offer - 50% Off Afternoon Tea
-const currentOffer: Offer = {
-  id: 'afternoon-tea-50',
-  title: 'Claim Your 50% Off Afternoon Tea',
-  subtitle: 'Limited Time Offer',
-  discount: '50% OFF',
-  code: 'TEA50',
-  endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-  ctaText: 'Claim Now',
-  ctaLink: '/afternoon-tea-offer',
-  bgGradient: 'from-[#c9a55c] via-[#d4b366] to-[#c9a55c]',
-  isActive: true,
-};
+const CAMPAIGNS: Campaign[] = [
+  {
+    id: 'bank-holiday-2026-08-31',
+    live: true,
+    from: '2026-08-01',
+    to: '2026-08-31',
+    eyebrow: 'Open specially · Monday 31 August',
+    headline: 'Summer Bank Holiday Monday',
+    detail: 'Food served 12:00pm–7:30pm',
+    ctaText: 'Book a table',
+    ctaLink: 'https://www.sevenrooms.com/reservations/themerryfiddlers',
+    gradient: 'from-[#b68b3d] via-[#c9a55c] to-[#b68b3d]',
+    pill: 'text-[#2d4a4a]',
+    icon: 'sparkles',
+    priority: 1,
+  },
+  {
+    id: 'christmas-day-2026',
+    live: true,
+    from: '2026-09-01',
+    to: '2026-12-25',
+    eyebrow: 'Christmas Day · Friday 25 December',
+    headline: 'Christmas Day reservations are open',
+    detail: 'No deposit required at this stage',
+    ctaText: 'Reserve your place',
+    ctaLink: '/christmas/christmas-day',
+    gradient: 'from-[#6f202a] via-[#8c2f39] to-[#6f202a]',
+    pill: 'text-[#8c2f39]',
+    icon: 'sparkles',
+    priority: 1,
+  },
+  {
+    id: 'afternoon-tea-evergreen',
+    live: true,
+    eyebrow: 'Wednesday to Saturday · 12–4pm',
+    headline: 'Afternoon Tea at The Fiddlers',
+    detail: 'Fresh scones, finger sandwiches & delicate cakes',
+    ctaText: 'See afternoon tea',
+    ctaLink: '/afternoon-tea-offer',
+    gradient: 'from-[#8f7138] via-[#b8944b] to-[#8f7138]',
+    pill: 'text-[#2d4a4a]',
+    icon: 'coffee',
+    priority: 2,
+  },
+];
 
-function calculateTimeLeft(endDate: Date): TimeLeft | null {
-  const difference = endDate.getTime() - new Date().getTime();
+const ROTATION_MS = 7000;
 
-  if (difference <= 0) {
-    return null;
-  }
-
-  return {
-    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-    minutes: Math.floor((difference / 1000 / 60) % 60),
-    seconds: Math.floor((difference / 1000) % 60),
-  };
+function activeCampaigns(now: Date): Campaign[] {
+  const today = now.toISOString().slice(0, 10);
+  return CAMPAIGNS.filter(
+    (campaign) =>
+      campaign.live &&
+      (!campaign.from || today >= campaign.from) &&
+      (!campaign.to || today <= campaign.to)
+  ).sort((a, b) => a.priority - b.priority);
 }
 
 export default function SpecialOfferBanner() {
-  const [isVisible, setIsVisible] = useState(true);
-  const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
-  const [offer] = useState<Offer>(currentOffer);
+  // Rendered only after mount so the server and client markup always agree.
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    // Check if banner was dismissed
-    const dismissed = localStorage.getItem(`offer-dismissed-${offer.id}`);
-    if (dismissed) {
-      const dismissedTime = new Date(dismissed);
-      const hoursSinceDismissed = (new Date().getTime() - dismissedTime.getTime()) / (1000 * 60 * 60);
-      // Show again after 24 hours
-      if (hoursSinceDismissed < 24) {
-        setIsVisible(false);
+    const available = activeCampaigns(new Date());
+    const hidden: string[] = [];
+
+    try {
+      for (const campaign of available) {
+        const stored = localStorage.getItem(`mf-banner-${campaign.id}`);
+        if (!stored) continue;
+        const hours =
+          (Date.now() - new Date(stored).getTime()) / (1000 * 60 * 60);
+        if (hours < 24) hidden.push(campaign.id);
       }
+    } catch {
+      /* private browsing — just show it */
     }
-  }, [offer.id]);
+
+    setDismissedIds(hidden);
+    setCampaigns(available);
+  }, []);
+
+  const visibleCampaigns = campaigns.filter(
+    (campaign) => !dismissedIds.includes(campaign.id)
+  );
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const newTimeLeft = calculateTimeLeft(offer.endDate);
-      setTimeLeft(newTimeLeft);
-    }, 1000);
+    if (visibleCampaigns.length < 2) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % visibleCampaigns.length);
+    }, ROTATION_MS);
+    return () => window.clearInterval(timer);
+  }, [visibleCampaigns.length]);
 
-    // Initial calculation
-    setTimeLeft(calculateTimeLeft(offer.endDate));
+  useEffect(() => {
+    if (activeIndex >= visibleCampaigns.length) setActiveIndex(0);
+  }, [activeIndex, visibleCampaigns.length]);
 
-    return () => clearInterval(timer);
-  }, [offer.endDate]);
+  const campaign = visibleCampaigns[activeIndex];
+  if (!campaign) return null;
 
   const handleDismiss = () => {
-    localStorage.setItem(`offer-dismissed-${offer.id}`, new Date().toISOString());
-    setIsVisible(false);
+    try {
+      localStorage.setItem(`mf-banner-${campaign.id}`, new Date().toISOString());
+    } catch {
+      /* ignore */
+    }
+    setDismissedIds((current) => [...current, campaign.id]);
+    setActiveIndex(0);
   };
 
-  if (!isVisible || !offer.isActive || !timeLeft) return null;
+  const isExternal = campaign.ctaLink.startsWith('http');
+  const CampaignIcon = campaign.icon === 'coffee' ? Coffee : Sparkles;
+
+  const cta = isExternal ? (
+    <a
+      href={campaign.ctaLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex items-center gap-1.5 px-5 py-2 bg-white ${campaign.pill} hover:bg-white/90 rounded-full text-[13px] font-bold transition-all whitespace-nowrap`}
+    >
+      {campaign.ctaText}
+      <ChevronRight className="w-4 h-4" />
+    </a>
+  ) : (
+    <Link
+      href={campaign.ctaLink}
+      className={`inline-flex items-center gap-1.5 px-5 py-2 bg-white ${campaign.pill} hover:bg-white/90 rounded-full text-[13px] font-bold transition-all whitespace-nowrap`}
+    >
+      {campaign.ctaText}
+      <ChevronRight className="w-4 h-4" />
+    </Link>
+  );
 
   return (
-    <div className={`bg-gradient-to-r ${offer.bgGradient} text-white relative overflow-hidden`}>
-      {/* Animated shimmer effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer" />
-
-      <div className="container mx-auto px-4 py-3 relative z-10">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Left - Offer info */}
-          <div className="flex items-center gap-4 text-center md:text-left">
-            <div className="hidden sm:flex w-10 h-10 bg-white/20 rounded-full items-center justify-center animate-pulse">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap">
-                <span className="text-xs uppercase tracking-wider text-white/90">{offer.subtitle}</span>
-                <span className="px-2 py-0.5 bg-white text-[#c9a55c] rounded text-xs font-bold">{offer.discount}</span>
-              </div>
-              <p className="font-semibold text-lg">{offer.title}</p>
-            </div>
-          </div>
-
-          {/* Center - Countdown */}
-          <div className="flex items-center gap-2 text-sm bg-black/20 px-4 py-2 rounded-full">
-            <Clock className="w-4 h-4" />
-            <span className="text-white/80 hidden sm:inline">Offer ends in:</span>
-            <div className="flex gap-1 font-mono">
-              {timeLeft.days > 0 && (
-                <span className="bg-white/20 px-2 py-1 rounded font-bold">
-                  {timeLeft.days}d
-                </span>
-              )}
-              <span className="bg-white/20 px-2 py-1 rounded font-bold">
-                {String(timeLeft.hours).padStart(2, '0')}h
-              </span>
-              <span className="bg-white/20 px-2 py-1 rounded font-bold">
-                {String(timeLeft.minutes).padStart(2, '0')}m
-              </span>
-              <span className="bg-white/20 px-2 py-1 rounded font-bold">
-                {String(timeLeft.seconds).padStart(2, '0')}s
-              </span>
-            </div>
-          </div>
-
-          {/* Right - CTA & Close */}
+    <div
+      className={`bg-gradient-to-r ${campaign.gradient} text-white relative overflow-hidden`}
+      role="region"
+      aria-label="Current offers and announcements"
+    >
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer"
+      />
+      <div className="container mx-auto px-4 py-2.5 relative z-10">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2 text-center sm:text-left">
           <div className="flex items-center gap-3">
-            {offer.code && (
-              <div className="hidden lg:flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded border border-white/30">
-                <span className="text-xs text-white/70">Code:</span>
-                <span className="font-mono font-bold text-lg">{offer.code}</span>
-              </div>
+            <CampaignIcon className="hidden sm:block w-4 h-4 flex-shrink-0 text-white/80" />
+            <div className="leading-tight">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-white/80">
+                {campaign.eyebrow}
+              </p>
+              <p
+                className="text-base sm:text-lg"
+                style={{ fontFamily: "'Cinzel', serif" }}
+              >
+                {campaign.headline}
+                {campaign.detail && (
+                  <span className="hidden md:inline text-white/85 text-sm font-normal">
+                    {' '}
+                    · {campaign.detail}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {visibleCampaigns.length > 1 && (
+              <span className="hidden sm:inline text-[10px] tabular-nums text-white/65" aria-hidden>
+                {activeIndex + 1}/{visibleCampaigns.length}
+              </span>
             )}
-            <Link
-              href={offer.ctaLink}
-              className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#2d4a4a] hover:bg-white/90 rounded-full text-sm font-bold transition-all hover:scale-105 shadow-lg"
-            >
-              {offer.ctaText}
-              <ChevronRight className="w-4 h-4" />
-            </Link>
+            {cta}
             <button
+              type="button"
               onClick={handleDismiss}
               className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Dismiss offer"
+              aria-label={`Dismiss ${campaign.headline}`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

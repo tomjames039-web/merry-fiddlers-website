@@ -1,6 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["*.preview.same-app.com"],
+  async redirects() {
+    return [
+      // SEO consolidation: one canonical page for "Christmas parties Epping".
+      {
+        source: "/private-hire/christmas-parties",
+        destination: "/christmas/christmas-parties",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     unoptimized: true,
     domains: [

@@ -109,9 +109,14 @@ export default function WhatsOnPage() {
   );
   const igHighlights = items.filter((i) => i.instagramUrl);
 
+  // The hero feature is simply the first featured item in the running order —
+  // in autumn that is the seasonal promo or Christmas, not the big screen.
   const feature =
-    screen.find((i) => i.featured) || screen[0] || null;
+    items.find((i) => i.featured) || items[0] || null;
   const sportCards = screen.filter((i) => !feature || i.id !== feature.id);
+  const offerCards = offers.filter((i) => !feature || i.id !== feature.id);
+  const diningCards = dining.filter((i) => !feature || i.id !== feature.id);
+  const specialCards = specials.filter((i) => !feature || i.id !== feature.id);
   // Self-healing image: retire old placeholders (incl. the "it's coming home"
   // shot) while respecting any custom image set in admin.
   const STALE_FEATURE_IMAGES = new Set([
@@ -122,7 +127,7 @@ export default function WhatsOnPage() {
   const featureImg =
     feature && feature.imageUrl && !STALE_FEATURE_IMAGES.has(feature.imageUrl)
       ? feature.imageUrl
-      : '/stadium-night.jpg';
+      : '/pub-front-3.jpeg';
 
   return (
     <div className="min-h-screen bg-[#f8f6f1]">
@@ -131,34 +136,23 @@ export default function WhatsOnPage() {
       <main>
         {/* ---------------- Hero ---------------- */}
         <section className="relative pt-20 pb-16 lg:pt-28 lg:pb-24 bg-gradient-to-br from-[#1d3a3a] via-[#2d4a4a] to-[#1d3a3a] text-white overflow-hidden">
-          {/* Match-night atmosphere behind the hero */}
           <img
-            src="/stadium-night.jpg"
+            src="/pub-front-3.jpeg"
             alt=""
             aria-hidden
             className="pointer-events-none absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: 'center 30%' }}
+            style={{ objectPosition: 'center 40%' }}
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#1d3a3a]/85 via-[#1d3a3a]/60 to-[#1d3a3a]/92"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#14302f]/90 via-[#1d3a3a]/72 to-[#1d3a3a]/94"
           />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-60"
             style={{
               background:
-                'radial-gradient(40rem 24rem at 85% -10%, rgba(201,165,92,0.18), transparent 60%), radial-gradient(36rem 22rem at 0% 110%, rgba(201,165,92,0.12), transparent 60%)',
-            }}
-          />
-          {/* faint stadium-light grid */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-[0.05]"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-              backgroundSize: '64px 64px',
+                'radial-gradient(40rem 24rem at 85% -10%, rgba(201,165,92,0.2), transparent 60%), radial-gradient(36rem 22rem at 0% 110%, rgba(140,47,57,0.24), transparent 60%)',
             }}
           />
           <div className="container mx-auto px-4 relative z-10">
@@ -170,7 +164,7 @@ export default function WhatsOnPage() {
             <div className="text-center max-w-3xl mx-auto">
               <div className="inline-flex items-center gap-2 bg-[#c9a55c] text-[#1d3a3a] px-4 py-1.5 rounded-full text-xs font-bold tracking-wider mb-6">
                 <CalendarDays className="w-4 h-4" />
-                LIVE SPORT · OFFERS · SIGNATURE DINING
+                AUTUMN · SUNDAY ROASTS · CHRISTMAS 2026
               </div>
               <h1
                 className="text-5xl md:text-6xl lg:text-7xl mb-6 leading-none"
@@ -185,10 +179,19 @@ export default function WhatsOnPage() {
                 className="text-lg md:text-xl text-white/90"
                 style={{ textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}
               >
-                Major tournaments on one of the largest screens in Essex,
-                two-for-one weekends at the bar, and the Sunday roast people
-                travel for.
+                Fires lit and log burners going, the Sunday roast people travel
+                for, two-for-one cocktails on Fridays — and the full Christmas
+                diary now open for bookings.
               </p>
+              <div className="mt-8">
+                <Link
+                  href="/christmas"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#8c2f39] hover:bg-[#a03744] text-[#f8f1e3] rounded-lg uppercase tracking-[0.14em] text-[13px] font-semibold transition-colors"
+                  style={{ fontFamily: "'Cinzel', serif" }}
+                >
+                  See the Christmas diary
+                </Link>
+              </div>
             </div>
 
             {/* highlight chips from featured items */}
@@ -313,7 +316,7 @@ export default function WhatsOnPage() {
               <SectionHeading
                 eyebrow="On the Big Screen"
                 title="Major Tournaments, Live"
-                blurb="We don't show everything — just the moments worth gathering for. Here's what's coming up on the 4-metre garden screen."
+                blurb="We don't show everything — just the moments worth gathering for. The 4-metre screen comes out for the big ones."
               />
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {sportCards.map((ev) => (
@@ -329,7 +332,7 @@ export default function WhatsOnPage() {
         )}
 
         {/* ---------------- Offers ---------------- */}
-        {offers.length > 0 && (
+        {offerCards.length > 0 && (
           <section className="py-16 lg:py-20 bg-[#2d4a4a] text-white relative overflow-hidden">
             <div
               aria-hidden
@@ -353,7 +356,7 @@ export default function WhatsOnPage() {
                 </h2>
               </div>
               <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                {offers.map((ev) => (
+                {offerCards.map((ev) => (
                   <OfferCard key={ev.id} item={ev} />
                 ))}
               </div>
@@ -362,16 +365,16 @@ export default function WhatsOnPage() {
         )}
 
         {/* ---------------- Signature dining ---------------- */}
-        {dining.length > 0 && (
+        {diningCards.length > 0 && (
           <section className="py-16 lg:py-24">
             <div className="container mx-auto px-4">
               <SectionHeading
                 eyebrow="Signature at the Fiddlers"
                 title="What We're Known For"
-                blurb="From the roast people travel for to fine dining under the domes — these are the bookings that fill up fast."
+                blurb="From the roast people travel for to private dining under the heated domes — these are the bookings that fill up fast."
               />
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                {dining.map((ev) => (
+                {diningCards.map((ev) => (
                   <DiningCard key={ev.id} item={ev} />
                 ))}
               </div>
@@ -404,16 +407,16 @@ export default function WhatsOnPage() {
         )}
 
         {/* ---------------- Also on / specials ---------------- */}
-        {specials.length > 0 && (
+        {specialCards.length > 0 && (
           <section className="py-16 lg:py-20 bg-[#f1ede4]">
             <div className="container mx-auto px-4">
               <SectionHeading
                 eyebrow="Also On"
-                title="Specials & Live Music"
-                blurb="Seasonal happenings and one-off events at the pub."
+                title="Seasonal & One-Off Events"
+                blurb="Seasonal happenings, festive dates and one-off events at the pub."
               />
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                {specials.map((ev) => (
+                {specialCards.map((ev) => (
                   <SportCard key={ev.id} item={ev} />
                 ))}
               </div>
@@ -425,10 +428,10 @@ export default function WhatsOnPage() {
         <section className="py-16 lg:py-20 bg-gradient-to-br from-[#2d4a4a] to-[#1d3a3a] text-white">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl mb-4" style={{ fontFamily: "'Cinzel', serif" }}>
-              Get the Best Seat in the Garden
+              Get the Best Table by the Fire
             </h2>
             <p className="text-white/80 max-w-xl mx-auto mb-8">
-              Tables go fast on match days and Sundays. Reserve yours now and
+              Sundays and December dates go quickly. Reserve yours now and
               we'll have a warm welcome waiting.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -442,11 +445,11 @@ export default function WhatsOnPage() {
                 Book A Table
               </a>
               <Link
-                href="/contact"
+                href="/christmas"
                 className="px-8 py-4 border-2 border-white/30 hover:bg-white/10 text-white rounded-lg transition-colors uppercase tracking-wider text-sm font-medium"
                 style={{ fontFamily: "'Cinzel', serif" }}
               >
-                Enquire About Events
+                Christmas 2026
               </Link>
             </div>
           </div>

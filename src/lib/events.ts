@@ -27,6 +27,12 @@ export interface EventType {
   /** value sent to the lead pipeline as the event type. */
   leadEventType: string;
   related: string[]; // slugs
+  /**
+   * When set, this occasion has a dedicated page elsewhere on the site and
+   * `/private-hire/<slug>` permanently redirects there (see next.config.js).
+   * Listing cards should link straight to this URL.
+   */
+  canonicalHref?: string;
 }
 
 export const LOCATION = '4 Fiddlers Hamlet, Epping CM16 7PY';
@@ -106,6 +112,8 @@ export const EVENTS: EventType[] = [
     ],
     leadEventType: 'other',
     related: ['work-parties', 'corporate-events', 'private-dining'],
+    // Consolidated into the dedicated Christmas hub — see next.config.js.
+    canonicalHref: '/christmas/christmas-parties',
   },
   {
     slug: 'birthday-parties',
@@ -288,6 +296,11 @@ export function getEvent(slug: string): EventType | undefined {
   return EVENTS.find((e) => e.slug === slug);
 }
 
+/**
+ * Slugs that actually render a `/private-hire/<slug>` page.
+ * Occasions with a `canonicalHref` are redirected, so they are excluded from
+ * static generation and from the sitemap.
+ */
 export function allEventSlugs(): string[] {
-  return EVENTS.map((e) => e.slug);
+  return EVENTS.filter((e) => !e.canonicalHref).map((e) => e.slug);
 }

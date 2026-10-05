@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import {
   sendBrochureEmail,
   sendBusinessNotificationEmail,
+  sendFestiveConfirmationEmail,
 } from '@/lib/email';
 import {
   type Lead,
@@ -33,6 +34,112 @@ const eventTypeLabels: Record<string, string> = {
   christening: 'Christening',
   anniversary: 'Anniversary',
   other: 'Other',
+};
+
+// ---------------------------------------------------------------------------
+// Festive confirmations (Christmas Day / parties / festive dates)
+// ---------------------------------------------------------------------------
+
+interface FestiveConfig {
+  heading: string;
+  subject: string;
+  dateLine: string;
+  intro: string;
+  whatHappensNext: string[];
+  ctaLabel: string;
+  ctaPath: string;
+  /** prefix for the business notification subject */
+  notify: string;
+}
+
+const FESTIVE_CONFIG: Record<string, FestiveConfig> = {
+  'christmas-day-reservation': {
+    heading: 'Christmas Day Reservation',
+    subject: 'Your Christmas Day reservation — The Merry Fiddlers',
+    dateLine: 'Friday 25 December 2026',
+    intro:
+      'Your place is now held in our Christmas Day book. Sittings are staggered through the day so every table gets cooked for properly, with the fires lit and the old place dressed for it.',
+    whatHappensNext: [
+      'No deposit is required at this stage.',
+      'We will contact you as soon as the final menu, sitting times and booking terms are released.',
+      'You will hear from us before those details go out publicly.',
+      'Your booking is fully confirmed once you have agreed those details with us.',
+    ],
+    ctaLabel: 'See all our Christmas dates',
+    ctaPath: '/christmas',
+    notify: 'CHRISTMAS DAY RESERVATION',
+  },
+  'christmas-party-enquiry': {
+    heading: 'Christmas Party Enquiry',
+    subject: 'Your Christmas party enquiry — The Merry Fiddlers',
+    dateLine: 'December 2026',
+    intro:
+      'Thank you for your Christmas party enquiry. We will look at your dates and numbers and come back to you with the right space and options.',
+    whatHappensNext: [
+      'A member of the team will contact you to talk through spaces and availability.',
+      'Festive party menus and drinks options follow as soon as they are finalised.',
+      'The best December dates go early, so we will hold a provisional slot where we can.',
+    ],
+    ctaLabel: 'See our Christmas party page',
+    ctaPath: '/christmas/christmas-parties',
+    notify: 'CHRISTMAS PARTY ENQUIRY',
+  },
+  'festive-christmas-eve': {
+    heading: 'Christmas Eve',
+    subject: 'Your Christmas Eve enquiry — The Merry Fiddlers',
+    dateLine: 'Thursday 24 December 2026',
+    intro:
+      'Thank you — we have your Christmas Eve enquiry. We are open for lunch and dinner, with the fires lit and the bar running on into the evening.',
+    whatHappensNext: [
+      'We will come back to you shortly to get your table booked in.',
+      'If you would rather sort it now, ring us on 01992 572142.',
+    ],
+    ctaLabel: 'See all our Christmas dates',
+    ctaPath: '/christmas',
+    notify: 'CHRISTMAS EVE ENQUIRY',
+  },
+  'festive-boxing-day': {
+    heading: 'Boxing Day',
+    subject: 'Your Boxing Day enquiry — The Merry Fiddlers',
+    dateLine: 'Saturday 26 December 2026',
+    intro:
+      'Thank you — we have your Boxing Day enquiry. We are open for lunch and dinner with a proper Boxing Day menu, not Christmas dinner all over again.',
+    whatHappensNext: [
+      'We will come back to you shortly to get your table booked in.',
+      'If you would rather sort it now, ring us on 01992 572142.',
+    ],
+    ctaLabel: 'See all our Christmas dates',
+    ctaPath: '/christmas',
+    notify: 'BOXING DAY ENQUIRY',
+  },
+  'festive-new-years-eve': {
+    heading: "New Year's Eve",
+    subject: "Your New Year's Eve enquiry — The Merry Fiddlers",
+    dateLine: 'Thursday 31 December 2026',
+    intro:
+      'Thank you — we have your New Year\u2019s Eve enquiry. We are open on the 31st with food served through the evening, no compulsory set menu and the bar open late.',
+    whatHappensNext: [
+      'We will come back to you shortly to get your table booked in.',
+      'New Year\u2019s Eve is our busiest night, so the sooner the better — ring us on 01992 572142 if you would like to confirm straight away.',
+    ],
+    ctaLabel: 'See all our Christmas dates',
+    ctaPath: '/christmas',
+    notify: "NEW YEAR'S EVE ENQUIRY",
+  },
+  'festive-new-years-day': {
+    heading: "New Year's Day",
+    subject: "Your New Year's Day enquiry — The Merry Fiddlers",
+    dateLine: 'Friday 1 January 2027',
+    intro:
+      'Thank you — we have your New Year\u2019s Day enquiry. We are open from midday, fires lit, with Epping Forest on the doorstep for the walk beforehand.',
+    whatHappensNext: [
+      'We will come back to you shortly to get your table booked in.',
+      'If you would rather sort it now, ring us on 01992 572142.',
+    ],
+    ctaLabel: 'See all our Christmas dates',
+    ctaPath: '/christmas',
+    notify: "NEW YEAR'S DAY ENQUIRY",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -75,13 +182,20 @@ export async function POST(request: NextRequest) {
     // or from any event landing page ("brochure-<event>"). Treat all of them as
     // brochure requests so the customer always gets the brochure AND we get notified.
     const isBrochure = (lead.source || '').startsWith('brochure');
+    const festive = FESTIVE_CONFIG[lead.source || ''];
 
     // Notify the business (awaited so failures surface in the response/logs)
     await sendBusinessNotificationEmail({
-      subject: isBrochure
-        ? `New Brochure Download — ${eventLabel} from ${fullName}`
-        : `New ${eventLabel} Enquiry from ${fullName}`,
-      heading: isBrochure ? 'New Brochure Download' : 'New Website Enquiry',
+      subject: festive
+        ? `${festive.notify} — ${fullName}${lead.expectedGuests ? ` (${lead.expectedGuests} guests)` : ''}`
+        : isBrochure
+          ? `New Brochure Download — ${eventLabel} from ${fullName}`
+          : `New ${eventLabel} Enquiry from ${fullName}`,
+      heading: festive
+        ? festive.heading
+        : isBrochure
+          ? 'New Brochure Download'
+          : 'New Website Enquiry',
       replyTo: lead.email,
       rows: [
         { label: 'Name', value: fullName },
@@ -90,7 +204,10 @@ export async function POST(request: NextRequest) {
         { label: 'Event Type', value: eventLabel },
         { label: 'Expected Guests', value: lead.expectedGuests || 'Not specified' },
         { label: 'Preferred Date', value: lead.preferredDate || 'Not specified' },
-        { label: 'Message', value: lead.message || '-' },
+        {
+          label: 'Details',
+          value: (lead.message || '-').replace(/\n/g, '<br>'),
+        },
         { label: 'Marketing Consent', value: lead.agreedToMarketing ? 'Yes' : 'No' },
         { label: 'Source', value: lead.source },
       ],
@@ -105,6 +222,30 @@ export async function POST(request: NextRequest) {
         expectedGuests: lead.expectedGuests,
         preferredDate: lead.preferredDate,
       }).catch((err) => console.error('Brochure email error:', err));
+    }
+
+    // Christmas Day reservations, party enquiries and festive interest all get
+    // a branded confirmation so the customer knows exactly what happens next.
+    if (festive) {
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || 'https://themerryfiddlers.co.uk';
+      await sendFestiveConfirmationEmail({
+        to: lead.email,
+        name: fullName,
+        heading: festive.heading,
+        subject: festive.subject,
+        dateLine: lead.preferredDate || festive.dateLine,
+        intro: festive.intro,
+        summaryRows: [
+          { label: 'Name', value: fullName },
+          { label: 'Guests', value: lead.expectedGuests || '' },
+          { label: 'Phone', value: lead.phone || '' },
+        ],
+        whatHappensNext: festive.whatHappensNext,
+        siteUrl,
+        ctaLabel: festive.ctaLabel,
+        ctaPath: festive.ctaPath,
+      }).catch((err) => console.error('Festive confirmation error:', err));
     }
 
     return NextResponse.json({

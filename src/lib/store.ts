@@ -682,33 +682,191 @@ const WHATS_ON = 'whats-on';
 const WHATS_ON_META = 'whats-on-meta';
 
 /**
- * One-time injection of the England v Argentina ticket promo into stores that
- * were seeded before it existed (i.e. production). It is added exactly once —
- * if staff later hide or delete it, the flag stops it coming back.
+ * Seasonal content migrations.
+ *
+ * The public feed is stored (Netlify Blobs in production), so simply editing
+ * DEFAULT_WHATS_ON does nothing to a live site that was seeded months ago.
+ * Each migration below therefore runs EXACTLY ONCE against the stored feed and
+ * is then flagged as done — if staff subsequently re-publish or delete an item
+ * by hand, the migration never fights them.
  */
-async function ensureArgentinaWhatsOn(
+interface WhatsOnMigration {
+  /** unique flag key stored in the meta collection */
+  key: string;
+  /** ids to archive (set status: draft) because the promotion has finished */
+  archive?: string[];
+  /** ids to (re)seed from DEFAULT_WHATS_ON if they are not already present */
+  inject?: string[];
+  /**
+   * ids whose COPY should be refreshed from DEFAULT_WHATS_ON (seasonal
+   * rewrites). Published/hidden state chosen by staff is preserved.
+   */
+  refresh?: string[];
+  /**
+   * Surgical find-and-replace on stored copy.
+   *
+   * Use this instead of `refresh` for small factual corrections. `refresh`
+   * overwrites the whole item from the seed, which would throw away any image,
+   * schedule or wording staff have since changed by hand. This only touches the
+   * exact phrase, and quietly does nothing if staff already fixed it.
+   */
+  replace?: { id: string; find: string; replace: string }[];
+}
+
+const WHATS_ON_MIGRATIONS: WhatsOnMigration[] = [
+  {
+    // Late August 2026: retire the summer sport promos, launch autumn/Christmas.
+    key: 'autumn-christmas-2026',
+    archive: [
+      'england-v-argentina',
+      'world-cup',
+      'england-saturday',
+      'wimbledon',
+      'wimbledon-pimms',
+      'summer-bbq',
+    ],
+    inject: [
+      'bank-holiday-monday',
+      'christmas-day-2026',
+      'christmas-parties-2026',
+      'festive-week-2026',
+      'open-fires',
+    ],
+    refresh: [
+      'sunday-roast',
+      'afternoon-tea',
+      'the-domes',
+      'big-screen',
+      'friday-cocktails',
+    ],
+  },
+  {
+    // Owner correction (26 Aug 2026): the Sunday roast is beef, LAMB or
+    // chicken — never pork. Targeted so nothing else about the item changes.
+    key: 'roast-lamb-correction-2026-08',
+    replace: [
+      {
+        id: 'sunday-roast',
+        find: 'beef, pork or chicken',
+        replace: 'beef, lamb or chicken',
+      },
+      {
+        id: 'sunday-roast',
+        find: 'Beef, pork or chicken',
+        replace: 'Beef, lamb or chicken',
+      },
+    ],
+  },
+  {
+    // Owner correction (28 Aug 2026): we WILL flip a few early tables on
+    // Christmas Day, so the "your table is yours / no one is rushed out"
+    // promise has to come off the site. The cover count is internal too —
+    // customers do not need it. `refresh` pulls the rewritten copy from the
+    // seed while keeping whatever image/schedule/published state staff chose.
+    key: 'xmas-no-table-promise-2026-08',
+    refresh: ['christmas-day-2026'],
+  },
+  {
+    // Owner correction (28 Aug 2026): the festive-week copy read as though we
+    // had nothing organised ("menus being finalised", "register for updates").
+    // We ARE open, serving food and taking bookings — say so.
+    key: 'festive-week-open-and-booking-2026-08',
+    refresh: ['festive-week-2026'],
+  },
+];
+
+async function runWhatsOnMigrations(
   items: WhatsOnItem[]
 ): Promise<WhatsOnItem[]> {
-  const id = 'england-v-argentina';
-  if (items.some((i) => i.id === id)) return items;
-  const flag = await getRecord<{ done: boolean }>(WHATS_ON_META, 'arg-injected');
-  if (flag?.done) return items;
-  const seed = DEFAULT_WHATS_ON.find((i) => i.id === id);
-  if (!seed) return items;
-  await putRecord(WHATS_ON, seed.id, seed);
-  await putRecord(WHATS_ON_META, 'arg-injected', { done: true });
-  return [...items, seed];
+  let current = items;
+
+  for (const migration of WHATS_ON_MIGRATIONS) {
+    const flag = await getRecord<{ done: boolean }>(
+      WHATS_ON_META,
+      migration.key
+    );
+    if (flag?.done) continue;
+
+    const now = new Date().toISOString();
+
+    // 1. Archive finished promotions (keep the record, hide from the site).
+    for (const id of migration.archive ?? []) {
+      const existing = current.find((i) => i.id === id);
+      if (!existing || existing.status === 'draft') continue;
+      const seed = DEFAULT_WHATS_ON.find((i) => i.id === id);
+      const archived: WhatsOnItem = {
+        ...existing,
+        title: seed?.title ?? existing.title,
+        description: seed?.description ?? existing.description,
+        badge: seed?.badge ?? 'Archived',
+        subtitle: seed?.subtitle ?? existing.subtitle,
+        status: 'draft',
+        featured: false,
+        order: seed?.order ?? existing.order,
+        updatedAt: now,
+      };
+      await putRecord(WHATS_ON, id, archived);
+      current = current.map((i) => (i.id === id ? archived : i));
+    }
+
+    // 2. Add the new seasonal items (only if they aren't already there).
+    for (const id of migration.inject ?? []) {
+      if (current.some((i) => i.id === id)) continue;
+      const seed = DEFAULT_WHATS_ON.find((i) => i.id === id);
+      if (!seed) continue;
+      await putRecord(WHATS_ON, id, seed);
+      current = [...current, seed];
+    }
+
+    // 3. Refresh seasonal copy on items that already exist.
+    for (const id of migration.refresh ?? []) {
+      const existing = current.find((i) => i.id === id);
+      const seed = DEFAULT_WHATS_ON.find((i) => i.id === id);
+      if (!existing || !seed) continue;
+      const refreshed: WhatsOnItem = {
+        ...seed,
+        // never override what staff have chosen to show or hide
+        status: existing.status,
+        createdAt: existing.createdAt,
+        updatedAt: now,
+      };
+      await putRecord(WHATS_ON, id, refreshed);
+      current = current.map((i) => (i.id === id ? refreshed : i));
+    }
+
+    // 4. Surgical copy corrections — everything else about the item survives.
+    for (const rule of migration.replace ?? []) {
+      const existing = current.find((i) => i.id === rule.id);
+      if (!existing?.description?.includes(rule.find)) continue;
+      const corrected: WhatsOnItem = {
+        ...existing,
+        description: existing.description.split(rule.find).join(rule.replace),
+        updatedAt: now,
+      };
+      await putRecord(WHATS_ON, rule.id, corrected);
+      current = current.map((i) => (i.id === rule.id ? corrected : i));
+    }
+
+    await putRecord(WHATS_ON_META, migration.key, { done: true });
+  }
+
+  return current;
 }
 
 export async function getWhatsOnItems(): Promise<WhatsOnItem[]> {
   const stored = await listRecords<WhatsOnItem>(WHATS_ON);
   if (stored.length > 0) {
-    const healed = await ensureArgentinaWhatsOn(stored);
-    return sortWhatsOn(healed);
+    const migrated = await runWhatsOnMigrations(stored);
+    return sortWhatsOn(migrated);
   }
   // First run — persist the defaults so future edits are stable.
   await Promise.all(
     DEFAULT_WHATS_ON.map((item) => putRecord(WHATS_ON, item.id, item))
+  );
+  // A fresh store already contains the latest content, so mark every
+  // migration as done rather than replaying them.
+  await Promise.all(
+    WHATS_ON_MIGRATIONS.map((m) => putRecord(WHATS_ON_META, m.key, { done: true }))
   );
   return sortWhatsOn(DEFAULT_WHATS_ON);
 }
@@ -748,6 +906,9 @@ export async function resetWhatsOnItems(): Promise<WhatsOnItem[]> {
   await Promise.all(existing.map((i) => deleteRecord(WHATS_ON, i.id)));
   await Promise.all(
     DEFAULT_WHATS_ON.map((item) => putRecord(WHATS_ON, item.id, item))
+  );
+  await Promise.all(
+    WHATS_ON_MIGRATIONS.map((m) => putRecord(WHATS_ON_META, m.key, { done: true }))
   );
   return sortWhatsOn(DEFAULT_WHATS_ON);
 }
