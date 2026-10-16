@@ -189,7 +189,7 @@ export default function AfternoonTeaOfferPage() {
                   </ul>
                   <div className="mt-8 p-4 bg-[#f8f6f1] rounded-lg">
                     <p className="text-sm text-gray-600">
-                      <strong className="text-[#c9a55c]">Dietary requirements?</strong> We cater for vegetarian, vegan, and gluten-free options. Just let us know when we contact you to book.
+                      <strong className="text-[#c9a55c]">Dietary requirements?</strong> Please let us know about any allergies or dietary requirements when you contact us to book, so we can discuss what is possible.
                     </p>
                   </div>
                 </div>
