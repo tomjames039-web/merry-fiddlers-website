@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
+import { isAuthorized } from '@/lib/auth';
 import {
   sendGiftVoucherEmail,
   sendBusinessNotificationEmail,
@@ -18,7 +19,10 @@ import {
  * Both emails are sent to the business inbox (BUSINESS_EMAIL) so you can see
  * exactly what you'd receive on a real sale and what the customer receives.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
   const url = new URL(request.url);
   const businessEmail = process.env.BUSINESS_EMAIL || 'info@themerryfiddlers.co.uk';
 
