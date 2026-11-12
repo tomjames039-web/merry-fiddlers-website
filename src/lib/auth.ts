@@ -6,11 +6,8 @@ import type { NextRequest } from 'next/server';
  * Bearer token on every data request.
  */
 export function getAdminPassword(): string {
-  return (
-    process.env.ADMIN_PASSWORD ||
-    process.env.ADMIN_API_KEY ||
-    'merryfiddlers2025'
-  );
+  // No public fallback: missing configuration must deny staff access.
+  return process.env.ADMIN_PASSWORD || process.env.ADMIN_API_KEY || '';
 }
 
 export function isAuthorized(request: NextRequest): boolean {

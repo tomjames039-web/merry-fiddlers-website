@@ -110,16 +110,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'invalid_type' }, { status: 400 });
     }
 
-    // Derive an absolute origin reliably (Stripe requires an absolute
-    // return_url). Prefer an explicit site URL, then the forwarded host,
-    // then the Origin header, then the request URL's own origin.
-    const host = request.headers.get('host');
-    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    // Keep returns on the public website when the API is reached through
+    // the Lovable proxy. Never derive a payment return URL from request headers.
     const origin =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      (host ? `${proto}://${host}` : '') ||
-      request.headers.get('origin') ||
-      request.nextUrl.origin;
+      'https://themerryfiddlers.co.uk';
 
     // This Stripe API version uses `embedded_page` for embedded checkout
     // (the older `embedded` value is no longer accepted). Returns client_secret.

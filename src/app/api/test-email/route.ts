@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
+import { isAuthorized } from '@/lib/auth';
 import { Resend } from 'resend';
 
 /**
@@ -8,7 +9,10 @@ import { Resend } from 'resend';
  *  2) from the REAL domain sender (bookings@themerryfiddlers.co.uk) — only works if the domain is VERIFIED in Resend
  * The response shows exactly which one worked and the precise Resend error if not.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
   const apiKey = process.env.RESEND_API_KEY;
   const businessEmail = process.env.BUSINESS_EMAIL || 'info@themerryfiddlers.co.uk';
 

@@ -114,13 +114,10 @@ export async function POST(request: NextRequest) {
   const booking = reservation.booking;
 
   // ---- Create the Stripe checkout session ----
-  const host = request.headers.get('host');
-  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  // The API may be reached through Lovable; returns stay on the public site.
   const origin =
     process.env.NEXT_PUBLIC_SITE_URL ||
-    (host ? `${proto}://${host}` : '') ||
-    request.headers.get('origin') ||
-    request.nextUrl.origin;
+    'https://themerryfiddlers.co.uk';
 
   const lineItems: CheckoutLineItem[] = [
     {
