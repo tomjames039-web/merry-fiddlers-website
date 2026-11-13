@@ -53,21 +53,20 @@ interface FestiveConfig {
 }
 
 const FESTIVE_CONFIG: Record<string, FestiveConfig> = {
-  'christmas-day-reservation': {
-    heading: 'Christmas Day Reservation',
-    subject: 'Your Christmas Day reservation — The Merry Fiddlers',
-    dateLine: 'Friday 25 December 2026',
+  'christmas-day-2027-interest': {
+    heading: 'Christmas Day 2026 is fully booked',
+    subject: 'Christmas Day is fully booked — looking ahead to 2027',
+    dateLine: 'Christmas Day 2026: fully booked · Christmas Day 2027: enquiries',
     intro:
-      'Your place is now held in our Christmas Day book. Sittings are staggered through the day so every table gets cooked for properly, with the fires lit and the old place dressed for it.',
+      'Thank you for getting in touch. Unfortunately, we are now completely fully booked for Christmas Day 2026. If you would like to request a provisional reservation for Christmas Day 2027, please reply to this email with your party size and any requirements. Our team will confirm availability and agree the provisional reservation with you.',
     whatHappensNext: [
-      'No deposit is required at this stage.',
-      'We will contact you as soon as the final menu, sitting times and booking terms are released.',
-      'You will hear from us before those details go out publicly.',
-      'Your booking is fully confirmed once you have agreed those details with us.',
+      'This acknowledgement does not reserve a table for 2026 or 2027.',
+      'We take provisional bookings throughout the year, subject to availability and agreement with our team.',
+      'In late September or early October 2027, we will contact guests with provisional bookings to arrange a 50% deposit to secure their Christmas Day reservation.',
     ],
     ctaLabel: 'See all our Christmas dates',
     ctaPath: '/christmas',
-    notify: 'CHRISTMAS DAY RESERVATION',
+    notify: 'CHRISTMAS DAY 2027 INTEREST — NOT A BOOKING',
   },
   'christmas-party-enquiry': {
     heading: 'Christmas Party Enquiry',
@@ -142,12 +141,26 @@ const FESTIVE_CONFIG: Record<string, FestiveConfig> = {
   },
 };
 
+// Stale browser forms must never create a new 2026 reservation or imply that
+// someone requested 2027. Existing saved reservations are left untouched.
+FESTIVE_CONFIG['christmas-day-2026-fully-booked'] = {
+  ...FESTIVE_CONFIG['christmas-day-2027-interest'],
+  notify: 'CHRISTMAS DAY 2026 FULLY-BOOKED ENQUIRY — NOT A BOOKING',
+};
+
 // ---------------------------------------------------------------------------
 // POST — capture a new lead (brochure download / enquiry)
 // ---------------------------------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
     const body: LeadInput = await request.json();
+
+    if (body.source === 'christmas-day-reservation') {
+      body.source = 'christmas-day-2026-fully-booked';
+    }
+    if (body.source === 'christmas-day-2027-interest') {
+      body.preferredDate = '2027-12-25';
+    }
 
     if (!body.email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -234,7 +247,9 @@ export async function POST(request: NextRequest) {
         name: fullName,
         heading: festive.heading,
         subject: festive.subject,
-        dateLine: lead.preferredDate || festive.dateLine,
+        dateLine: lead.source?.startsWith('christmas-day-')
+          ? festive.dateLine
+          : lead.preferredDate || festive.dateLine,
         intro: festive.intro,
         summaryRows: [
           { label: 'Name', value: fullName },
