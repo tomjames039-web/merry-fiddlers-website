@@ -48,4 +48,8 @@ test('Christmas party enquiries retain their own acknowledgement', async () => {
   const email = emails.find(e => e.to === 'test@example.invalid');
   expect(email.subject).toContain('party enquiry');
   expect(email.html).not.toContain('fully booked for Christmas Day');
+  expect(email.html).toContain('No table or private space is reserved');
+  expect(email.html).toContain('27 November, 4, 11 and 18 December 2026');
+  expect(email.html).not.toContain('as soon as they are finalised');
+  expect(email.html).not.toContain('hold a provisional slot');
 });
