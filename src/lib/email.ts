@@ -902,6 +902,7 @@ export async function sendFestiveConfirmationEmail(details: {
     to: details.to,
     subject: details.subject,
     html: getFestiveConfirmationHTML({ ...details, firstName }),
+    replyTo: 'info@themerryfiddlers.co.uk',
     label: 'Festive confirmation',
   });
 }
