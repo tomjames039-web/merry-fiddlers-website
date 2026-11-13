@@ -71,13 +71,13 @@ const FESTIVE_CONFIG: Record<string, FestiveConfig> = {
   'christmas-party-enquiry': {
     heading: 'Christmas Party Enquiry',
     subject: 'Your Christmas party enquiry — The Merry Fiddlers',
-    dateLine: 'December 2026',
+    dateLine: 'Christmas parties 2026',
     intro:
       'Thank you for your Christmas party enquiry. We will look at your dates and numbers and come back to you with the right space and options.',
     whatHappensNext: [
       'A member of the team will contact you to talk through spaces and availability.',
-      'Festive party menus and drinks options follow as soon as they are finalised.',
-      'The best December dates go early, so we will hold a provisional slot where we can.',
+      'We will discuss suitable arrangements for your date and group, subject to availability. The advertised Friday Party Nights packages apply only on 27 November, 4, 11 and 18 December 2026.',
+      'This is an enquiry, not a confirmed booking. No table or private space is reserved by submitting this form.',
     ],
     ctaLabel: 'See our Christmas party page',
     ctaPath: '/christmas/christmas-parties',
